@@ -13,7 +13,7 @@ categories = ["gui", "wasm", "web-programming", "api-bindings"]
 maintenance = { status = "actively-developed" }
 
 [dependencies]
-yew = { git = "https://github.com/yewstack/yew.git" }
-yewtil = { git = "https://github.com/yewstack/yew.git", default-features = false, features = ["neq"] }
+yew = "0.17"
+yewtil = { version = "0.3", default-features = false, features = ["neq"] }
 web-sys = { version = "0.3", features = ["Request"] }
 form-validation = { version = "0.1", git = "https://github.com/kellpossible/form-validation.git" }

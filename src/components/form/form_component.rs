@@ -1,6 +1,5 @@
 use crate::components::form::field::FieldKey;
 use form_validation::ValidationErrors;
-use yew::html::Renderable;
 use yew::{html, Callback, Children, Component, ComponentLink, Html, Properties, ShouldRender};
 
 use super::field::{FieldLink, FieldMsg};
@@ -142,7 +141,7 @@ where
 
         html! {
             <>
-                { self.props.children.render() }
+                { self.props.children.clone() }
                 <div class="field is-grouped">
                     <div class="control">
                         <button
@@ -178,13 +177,16 @@ where
     }
 }
 
+type FormLink<Key> = ComponentLink<Form<Key>>;
+type FieldLinkMap<Key> = HashMap<Key, Rc<dyn FieldLink<Key>>>;
+
 #[derive(Clone, Debug)]
 pub struct FormFieldLink<Key = &'static str>
 where
     Key: FieldKey + 'static,
 {
-    form_link: Rc<RefCell<Option<ComponentLink<Form<Key>>>>>,
-    field_links: Rc<RefCell<HashMap<Key, Rc<dyn FieldLink<Key>>>>>,
+    form_link: Rc<RefCell<Option<FormLink<Key>>>>,
+    field_links: Rc<RefCell<FieldLinkMap<Key>>>,
 }
 
 impl<Key> PartialEq for FormFieldLink<Key>
@@ -209,11 +211,7 @@ where
     }
 
     pub fn registered_fields(&self) -> Vec<Key> {
-        self.field_links
-            .borrow()
-            .keys()
-            .map(|key| key.clone())
-            .collect()
+        self.field_links.borrow().keys().cloned().collect()
     }
 
     pub fn register_form(&self, link: ComponentLink<Form<Key>>) {
@@ -238,10 +236,12 @@ where
         self.field_links
             .borrow()
             .get(key)
-            .expect(&format!(
-                "expected there to be a FieldLink matching the FieldKey {0:?}",
-                key
-            ))
+            .unwrap_or_else(|| {
+                panic!(
+                    "expected there to be a FieldLink matching the FieldKey {0:?}",
+                    key
+                )
+            })
             .send_message(msg);
     }
 
@@ -257,5 +257,14 @@ where
             .as_ref()
             .expect("expected ComponentLink<Form> to be registered")
             .send_message(msg);
+    }
+}
+
+impl<Key> Default for FormFieldLink<Key>
+where
+    Key: FieldKey + 'static,
+{
+    fn default() -> Self {
+        Self::new()
     }
 }

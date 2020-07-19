@@ -2,13 +2,12 @@
 //! rendering and validating [bulma forms and form
 //! controls](https://bulma.io/documentation/form/general/).
 
-pub mod field;
-pub mod form;
-pub mod input_field;
-pub mod select_field;
+mod field;
+mod form_component;
+mod input_field;
+mod select_field;
 
-pub use field::FieldKey;
-pub use form::Form;
-pub use form::FormFieldLink;
+pub use field::{FieldKey, FieldLink, FieldMsg, FormField};
+pub use form_component::{Form, FormFieldLink, FormMsg};
 pub use input_field::{InputField, InputValue};
 pub use select_field::SelectField;

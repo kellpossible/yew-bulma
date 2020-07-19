@@ -1,13 +1,9 @@
-use crate::components::{form::field::FieldKey, Select};
+use crate::components::form::{FieldKey, FieldLink, FieldMsg, FormField, FormFieldLink, FormMsg};
+use crate::select::Select;
 
 use form_validation::{Validatable, Validation, ValidationErrors, Validator};
 use yew::{html, Callback, Component, ComponentLink, Html, Properties, ShouldRender};
 
-use super::{
-    field::{FieldLink, FieldMsg, FormField},
-    form::{self, FormFieldLink},
-};
-use form::FormMsg;
 use std::{
     fmt::{Debug, Display},
     rc::Rc,

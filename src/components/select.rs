@@ -6,10 +6,7 @@
 //! License for original code:
 //! https://github.com/yewstack/yew/blob/master/LICENSE-APACHE
 
-use crate::{
-    components::{icon, Icon},
-    Size,
-};
+use crate::{components::icon, Size};
 use web_sys::HtmlSelectElement;
 use yew::callback::Callback;
 use yew::html::{ChangeData, Component, ComponentLink, Html, NodeRef, ShouldRender};
@@ -112,7 +109,7 @@ where
             None => vec![],
         };
 
-        div_classes.extend(size_class_vec.clone());
+        div_classes.extend(size_class_vec);
 
         div_classes.extend(self.props.div_classes.clone());
 
@@ -136,7 +133,7 @@ where
                 {
                     inner
                 }
-                <Icon with icon_props/>
+                <icon::Icon with icon_props/>
                 </div>
             }
         } else {
