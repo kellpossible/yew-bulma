@@ -1,9 +1,8 @@
 //! A `yew` [Component](yew::Component) to render a `bulma`
 //! [icon](https://bulma.io/documentation/elements/icon/).
 
+use crate::classes::Color;
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
-
-use crate::Color;
 use yewtil::NeqAssign;
 
 #[derive(Debug, Clone)]
