@@ -1,19 +1,20 @@
 [package]
-name = "yew-bulma"
-version = "0.1.0"
 authors = ["Luke Frisken <l.frisken@gmail.com>"]
-edition = "2018"
-description = "Components based on the bulma css library for projects using the yew front-end web development framework."
-readme = "README.md"
-license = "MIT"
-keywords = ["yew", "wasm", "bulma", "css"]
 categories = ["gui", "wasm", "web-programming", "api-bindings"]
+description = "Components based on the bulma css library for projects using the yew front-end web development framework."
+edition = "2018"
+keywords = ["yew", "wasm", "bulma", "css"]
+license = "MIT"
+name = "yew-bulma"
+readme = "README.md"
+repository = "https://github.com/kellpossible/yew-bulma"
+version = "0.1.0"
 
 [badges]
 maintenance = { status = "actively-developed" }
 
 [dependencies]
+form-validation = { version = "0.1" }
+web-sys = { version = "0.3", features = ["Request"] }
 yew = "0.17"
 yewtil = { version = "0.3", default-features = false, features = ["neq"] }
-web-sys = { version = "0.3", features = ["Request"] }
-form-validation = { version = "0.1", git = "https://github.com/kellpossible/form-validation.git" }
