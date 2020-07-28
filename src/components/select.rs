@@ -6,7 +6,7 @@
 //! License for original code:
 //! https://github.com/yewstack/yew/blob/master/LICENSE-APACHE
 
-use crate::{components::icon, classes::Size};
+use crate::{classes::Size, components::icon};
 use web_sys::HtmlSelectElement;
 use yew::callback::Callback;
 use yew::html::{ChangeData, Component, ComponentLink, Html, NodeRef, ShouldRender};
