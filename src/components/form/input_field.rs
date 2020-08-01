@@ -47,12 +47,12 @@ where
 {
     value: InputValue,
     validation_errors: ValidationErrors<Key>,
-    props: Props<Key>,
+    props: InputFieldProps<Key>,
     form_link: FormFieldLink<Key>,
     link: ComponentLink<Self>,
 }
 
-pub enum Msg {
+pub enum InputFieldMsg {
     Update(InputValue),
     Validate,
 }
@@ -74,10 +74,10 @@ where
     }
 }
 
-impl Into<Msg> for FieldMsg {
-    fn into(self) -> Msg {
+impl Into<InputFieldMsg> for FieldMsg {
+    fn into(self) -> InputFieldMsg {
         match self {
-            FieldMsg::Validate => Msg::Validate,
+            FieldMsg::Validate => InputFieldMsg::Validate,
         }
     }
 }
@@ -94,19 +94,26 @@ where
     }
 }
 
+/// [Properties](yew::Component::Properties) for [InputField].
 #[derive(PartialEq, Clone, Properties, Debug)]
-pub struct Props<Key>
+pub struct InputFieldProps<Key>
 where
     Key: FieldKey + 'static,
 {
+    /// The key used to refer to this field. 
     pub field_key: Key,
+    /// The link to the form that this field belongs to.
     pub form_link: FormFieldLink<Key>,
+    /// (Optional) A label to use for this field.
     #[prop_or_default]
     pub label: Option<String>,
+    /// (Optional) What validator to use for this field.
     #[prop_or_default]
     pub validator: Validator<InputValue, Key>,
+    /// (Optional) A callback for when this field changes.
     #[prop_or_default]
     pub onchange: Callback<InputValue>,
+    /// (Optional) A placeholder string.
     #[prop_or_default]
     pub placeholder: String,
 }
@@ -115,10 +122,10 @@ impl<Key> Component for InputField<Key>
 where
     Key: Clone + PartialEq + Display + FieldKey + Hash + Eq + 'static,
 {
-    type Message = Msg;
-    type Properties = Props<Key>;
+    type Message = InputFieldMsg;
+    type Properties = InputFieldProps<Key>;
 
-    fn create(props: Props<Key>, link: ComponentLink<Self>) -> Self {
+    fn create(props: InputFieldProps<Key>, link: ComponentLink<Self>) -> Self {
         let form_link = props.form_link.clone();
 
         let field_link = InputFieldLink {
@@ -137,18 +144,18 @@ where
         }
     }
 
-    fn update(&mut self, msg: Msg) -> ShouldRender {
+    fn update(&mut self, msg: InputFieldMsg) -> ShouldRender {
         match msg {
-            Msg::Update(value) => {
+            InputFieldMsg::Update(value) => {
                 self.value = value.clone();
                 self.props.onchange.emit(value);
                 self.props
                     .form_link
                     .send_form_message(FormMsg::FieldValueUpdate(self.props.field_key.clone()));
-                self.update(Msg::Validate);
+                self.update(InputFieldMsg::Validate);
                 true
             }
-            Msg::Validate => {
+            InputFieldMsg::Validate => {
                 self.validation_errors = self.validate_or_empty();
                 self.props
                     .form_link
@@ -173,7 +180,7 @@ where
             };
 
         let input_onchange = self.link.callback(move |data: ChangeData| match data {
-            ChangeData::Value(value) => Msg::Update(InputValue::String(value)),
+            ChangeData::Value(value) => InputFieldMsg::Update(InputValue::String(value)),
             _ => panic!("invalid data type"),
         });
 
@@ -202,7 +209,7 @@ where
         }
     }
 
-    fn change(&mut self, props: Props<Key>) -> ShouldRender {
+    fn change(&mut self, props: InputFieldProps<Key>) -> ShouldRender {
         if self.props != props {
             if self.form_link != props.form_link {
                 let form_link = props.form_link.clone();

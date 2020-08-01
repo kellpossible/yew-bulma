@@ -17,7 +17,7 @@ where
 {
     value: Option<Value>,
     validation_errors: ValidationErrors<Key>,
-    props: Props<Value, Key>,
+    props: SelectFieldProps<Value, Key>,
     form_link: FormFieldLink<Key>,
     link: ComponentLink<Self>,
 }
@@ -67,8 +67,9 @@ where
     }
 }
 
+/// [Properties](yew::Component::Properties) for [SelectField].
 #[derive(PartialEq, Clone, Properties, Debug)]
-pub struct Props<Value, Key>
+pub struct SelectFieldProps<Value, Key>
 where
     Key: FieldKey + 'static,
     Value: Clone,
@@ -92,9 +93,9 @@ where
     Key: FieldKey + 'static,
 {
     type Message = Msg<Value>;
-    type Properties = Props<Value, Key>;
+    type Properties = SelectFieldProps<Value, Key>;
 
-    fn create(props: Props<Value, Key>, link: ComponentLink<Self>) -> Self {
+    fn create(props: SelectFieldProps<Value, Key>, link: ComponentLink<Self>) -> Self {
         let form_link = props.form_link.clone();
 
         let field_link = SelectFieldLink {
@@ -172,7 +173,7 @@ where
         }
     }
 
-    fn change(&mut self, props: Props<Value, Key>) -> ShouldRender {
+    fn change(&mut self, props: SelectFieldProps<Value, Key>) -> ShouldRender {
         if self.props != props {
             if self.form_link != props.form_link {
                 let form_link = props.form_link.clone();

@@ -13,7 +13,7 @@ where
     validation_errors: HashMap<Key, ValidationErrors<Key>>,
     /// Will be true while waiting all fields to perform their validations
     validating: bool,
-    props: Props<Key>,
+    props: FormProps<Key>,
     field_link: FormFieldLink<Key>,
     link: ComponentLink<Self>,
 }
@@ -51,12 +51,15 @@ pub enum FormMsg<Key> {
     Cancel,
 }
 
+/// [Properties](yew::Component::Properties) for [Form].
 #[derive(Clone, Properties, PartialEq, Debug)]
-pub struct Props<Key>
+pub struct FormProps<Key>
 where
     Key: FieldKey + 'static,
 {
+    /// The link between this form and its fields.
     pub field_link: FormFieldLink<Key>,
+    /// Fields, buttons and other elements within the form.
     pub children: Children,
     #[prop_or_default]
     pub oncancel: Callback<()>,
@@ -73,9 +76,9 @@ where
     Key: FieldKey + 'static,
 {
     type Message = FormMsg<Key>;
-    type Properties = Props<Key>;
+    type Properties = FormProps<Key>;
 
-    fn create(props: Props<Key>, link: ComponentLink<Self>) -> Self {
+    fn create(props: FormProps<Key>, link: ComponentLink<Self>) -> Self {
         let field_link = props.field_link.clone();
         field_link.register_form(link.clone());
 
@@ -159,7 +162,7 @@ where
         }
     }
 
-    fn change(&mut self, props: Props<Key>) -> ShouldRender {
+    fn change(&mut self, props: FormProps<Key>) -> ShouldRender {
         if self.props != props {
             if self.field_link != props.field_link {
                 let field_link = props.field_link.clone();
