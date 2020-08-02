@@ -4,9 +4,9 @@ use form_validation::{Validatable, Validation, ValidationErrors, Validator};
 use yew::{html, Callback, ChangeData, Component, ComponentLink, Html, Properties, ShouldRender};
 
 use super::{
-    field::{FieldLink, FieldMsg, FormField},
-    FormFieldLink,
+    FormFieldLink, FieldMsg, FieldLink, FormField,
 };
+
 use std::{
     fmt::{Debug, Display},
     hash::Hash,
