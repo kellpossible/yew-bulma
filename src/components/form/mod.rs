@@ -2,11 +2,11 @@
 //! rendering and validating [bulma forms and form
 //! controls](https://bulma.io/documentation/form/general/).
 
+pub mod checkbox_field;
 mod form_component;
 pub mod input_field;
 mod link;
-mod select_field;
+pub mod select_field;
 
 pub use form_component::{Form, FormMsg, FormProps};
-pub use link::{FormFieldLink, FieldKey, FieldLink, FieldMsg, FormField};
-pub use select_field::{SelectField, SelectFieldProps};
+pub use link::{FieldKey, FieldLink, FieldMsg, FormField, FormFieldLink};

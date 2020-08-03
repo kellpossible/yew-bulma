@@ -3,9 +3,7 @@ use crate::components::form::{FieldKey, FormMsg};
 use form_validation::{Validatable, Validation, ValidationErrors, Validator};
 use yew::{html, Callback, ChangeData, Component, ComponentLink, Html, Properties, ShouldRender};
 
-use super::{
-    FormFieldLink, FieldMsg, FieldLink, FormField,
-};
+use super::{FieldLink, FieldMsg, FormField, FormFieldLink};
 
 use std::{
     fmt::{Debug, Display},
@@ -30,7 +28,7 @@ impl InputType for TextInputType {
     fn value_from_html_value(html_value: &str) -> Self::Value {
         html_value.to_string()
     }
-    
+
     fn default_value() -> Self::Value {
         String::default()
     }
@@ -96,7 +94,7 @@ where
     }
 }
 
-impl <Type> Into<InputFieldMsg<Type>> for FieldMsg {
+impl<Type> Into<InputFieldMsg<Type>> for FieldMsg {
     fn into(self) -> InputFieldMsg<Type> {
         match self {
             FieldMsg::Validate => InputFieldMsg::Validate,
@@ -124,7 +122,7 @@ where
     Key: FieldKey + 'static,
     Value: Clone,
 {
-    /// The key used to refer to this field. 
+    /// The key used to refer to this field.
     pub field_key: Key,
     /// The link to the form that this field belongs to.
     pub form_link: FormFieldLink<Key>,
@@ -172,18 +170,21 @@ where
     fn update(&mut self, msg: InputFieldMsg<Type::Value>) -> ShouldRender {
         match msg {
             InputFieldMsg::Update(value) => {
-                self.value = value.clone();
-                self.props.onchange.emit(value);
-                self.props
-                    .form_link
-                    .send_form_message(FormMsg::FieldValueUpdate(self.props.field_key.clone()));
-                self.update(InputFieldMsg::Validate);
-                true
+                let changed = value != self.value;
+
+                if changed {
+                    self.value = value.clone();
+                    self.props.onchange.emit(value);
+                    self.form_link
+                        .send_form_message(FormMsg::FieldValueUpdate(self.props.field_key.clone()));
+                    self.update(InputFieldMsg::Validate);
+                }
+
+                changed
             }
             InputFieldMsg::Validate => {
                 self.validation_errors = self.validate_or_empty();
-                self.props
-                    .form_link
+                self.form_link
                     .send_form_message(FormMsg::FieldValidationUpdate(
                         self.props.field_key.clone(),
                         self.validation_errors.clone(),
@@ -260,7 +261,7 @@ where
 impl<Key, Type> Validatable<Key> for InputField<Key, Type>
 where
     Key: FieldKey,
-    Type: InputType
+    Type: InputType,
 {
     fn validate(&self) -> Result<(), ValidationErrors<Key>> {
         self.props

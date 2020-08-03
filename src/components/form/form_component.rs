@@ -1,8 +1,8 @@
-use super::{FormFieldLink, FieldKey, FieldMsg};
+use super::{FieldKey, FieldMsg, FormFieldLink};
 
 use form_validation::ValidationErrors;
-use yew::{html, Callback, Children, Component, ComponentLink, Html, Properties, ShouldRender};
 use std::collections::HashMap;
+use yew::{html, Callback, Children, Component, ComponentLink, Html, Properties, ShouldRender};
 
 #[derive(Debug)]
 pub struct Form<Key>

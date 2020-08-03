@@ -1,7 +1,13 @@
-use std::{rc::Rc, cell::RefCell, collections::HashMap, fmt::{Debug, Display}, hash::Hash};
-use yew::ComponentLink;
-use super::{FormMsg, Form};
+use super::{Form, FormMsg};
 use form_validation::ValidationErrors;
+use std::{
+    cell::RefCell,
+    collections::HashMap,
+    fmt::{Debug, Display},
+    hash::Hash,
+    rc::Rc,
+};
+use yew::ComponentLink;
 
 type FormLink<Key> = ComponentLink<Form<Key>>;
 type FieldLinkMap<Key> = HashMap<Key, Rc<dyn FieldLink<Key>>>;
