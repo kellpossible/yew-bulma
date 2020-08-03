@@ -13,78 +13,101 @@ use std::{
     rc::Rc,
 };
 
-#[derive(Debug, Clone)]
-pub enum InputValue {
-    String(String),
+pub trait InputType {
+    type Value: Clone + Display + PartialEq;
+
+    fn value_from_html_value(html_value: &str) -> Self::Value;
+    fn default_value() -> Self::Value;
+    fn input_type() -> &'static str;
 }
 
-impl InputValue {
-    pub fn as_string(&self) -> &String {
-        match self {
-            InputValue::String(value) => &value,
-        }
+pub struct TextInputType;
+pub type TextInput<Key> = InputField<Key, TextInputType>;
+
+impl InputType for TextInputType {
+    type Value = String;
+
+    fn value_from_html_value(html_value: &str) -> Self::Value {
+        html_value.to_string()
+    }
+    
+    fn default_value() -> Self::Value {
+        String::default()
     }
 
-    pub fn into_string(self) -> String {
-        match self {
-            InputValue::String(value) => value,
-        }
+    fn input_type() -> &'static str {
+        "text"
     }
 }
 
-impl Display for InputValue {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            InputValue::String(value) => Display::fmt(&value, f),
-        }
+pub struct PasswordInputType;
+pub type PasswordInput<Key> = InputField<Key, PasswordInputType>;
+
+impl InputType for PasswordInputType {
+    type Value = String;
+
+    fn value_from_html_value(html_value: &str) -> Self::Value {
+        html_value.to_string()
+    }
+
+    fn default_value() -> Self::Value {
+        String::default()
+    }
+
+    fn input_type() -> &'static str {
+        "password"
     }
 }
 
 #[derive(Debug)]
-pub struct InputField<Key>
+pub struct InputField<Key, Type>
 where
     Key: FieldKey + 'static,
+    Type: InputType + 'static,
 {
-    value: InputValue,
+    value: Type::Value,
     validation_errors: ValidationErrors<Key>,
-    props: InputFieldProps<Key>,
+    props: InputFieldProps<Key, Type::Value>,
     form_link: FormFieldLink<Key>,
     link: ComponentLink<Self>,
 }
 
-pub enum InputFieldMsg {
-    Update(InputValue),
+pub enum InputFieldMsg<Value> {
+    Update(Value),
     Validate,
 }
 
-pub struct InputFieldLink<Key>
+pub struct InputFieldLink<Key, Type>
 where
     Key: FieldKey + 'static,
+    Type: InputType + 'static,
 {
     pub field_key: Key,
-    pub link: ComponentLink<InputField<Key>>,
+    pub link: ComponentLink<InputField<Key, Type>>,
 }
 
-impl<Key> Debug for InputFieldLink<Key>
+impl<Key, Type> Debug for InputFieldLink<Key, Type>
 where
     Key: FieldKey + 'static,
+    Type: InputType + 'static,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "SelectFieldLink<{0:?}>", self.field_key())
     }
 }
 
-impl Into<InputFieldMsg> for FieldMsg {
-    fn into(self) -> InputFieldMsg {
+impl <Type> Into<InputFieldMsg<Type>> for FieldMsg {
+    fn into(self) -> InputFieldMsg<Type> {
         match self {
             FieldMsg::Validate => InputFieldMsg::Validate,
         }
     }
 }
 
-impl<Key> FieldLink<Key> for InputFieldLink<Key>
+impl<Key, Type> FieldLink<Key> for InputFieldLink<Key, Type>
 where
     Key: FieldKey + 'static,
+    Type: InputType + 'static,
 {
     fn field_key(&self) -> &Key {
         &self.field_key
@@ -96,9 +119,10 @@ where
 
 /// [Properties](yew::Component::Properties) for [InputField].
 #[derive(PartialEq, Clone, Properties, Debug)]
-pub struct InputFieldProps<Key>
+pub struct InputFieldProps<Key, Value>
 where
     Key: FieldKey + 'static,
+    Value: Clone,
 {
     /// The key used to refer to this field. 
     pub field_key: Key,
@@ -109,23 +133,24 @@ where
     pub label: Option<String>,
     /// (Optional) What validator to use for this field.
     #[prop_or_default]
-    pub validator: Validator<InputValue, Key>,
+    pub validator: Validator<Value, Key>,
     /// (Optional) A callback for when this field changes.
     #[prop_or_default]
-    pub onchange: Callback<InputValue>,
+    pub onchange: Callback<Value>,
     /// (Optional) A placeholder string.
     #[prop_or_default]
     pub placeholder: String,
 }
 
-impl<Key> Component for InputField<Key>
+impl<Key, Type> Component for InputField<Key, Type>
 where
     Key: Clone + PartialEq + Display + FieldKey + Hash + Eq + 'static,
+    Type: InputType + 'static,
 {
-    type Message = InputFieldMsg;
-    type Properties = InputFieldProps<Key>;
+    type Message = InputFieldMsg<Type::Value>;
+    type Properties = InputFieldProps<Key, Type::Value>;
 
-    fn create(props: InputFieldProps<Key>, link: ComponentLink<Self>) -> Self {
+    fn create(props: InputFieldProps<Key, Type::Value>, link: ComponentLink<Self>) -> Self {
         let form_link = props.form_link.clone();
 
         let field_link = InputFieldLink {
@@ -136,7 +161,7 @@ where
         form_link.register_field(Rc::new(field_link));
 
         InputField {
-            value: InputValue::String(String::default()),
+            value: Type::default_value(),
             validation_errors: ValidationErrors::default(),
             props,
             form_link,
@@ -144,7 +169,7 @@ where
         }
     }
 
-    fn update(&mut self, msg: InputFieldMsg) -> ShouldRender {
+    fn update(&mut self, msg: InputFieldMsg<Type::Value>) -> ShouldRender {
         match msg {
             InputFieldMsg::Update(value) => {
                 self.value = value.clone();
@@ -180,7 +205,7 @@ where
             };
 
         let input_onchange = self.link.callback(move |data: ChangeData| match data {
-            ChangeData::Value(value) => InputFieldMsg::Update(InputValue::String(value)),
+            ChangeData::Value(value) => InputFieldMsg::Update(Type::value_from_html_value(&value)),
             _ => panic!("invalid data type"),
         });
 
@@ -200,7 +225,7 @@ where
                     <input
                         class=classes
                         value=self.value
-                        type="text"
+                        type=Type::input_type()
                         placeholder=self.props.placeholder
                         onchange=input_onchange/>
                 </div>
@@ -209,7 +234,7 @@ where
         }
     }
 
-    fn change(&mut self, props: InputFieldProps<Key>) -> ShouldRender {
+    fn change(&mut self, props: InputFieldProps<Key, Type::Value>) -> ShouldRender {
         if self.props != props {
             if self.form_link != props.form_link {
                 let form_link = props.form_link.clone();
@@ -232,9 +257,10 @@ where
     }
 }
 
-impl<Key> Validatable<Key> for InputField<Key>
+impl<Key, Type> Validatable<Key> for InputField<Key, Type>
 where
     Key: FieldKey,
+    Type: InputType
 {
     fn validate(&self) -> Result<(), ValidationErrors<Key>> {
         self.props
@@ -243,9 +269,10 @@ where
     }
 }
 
-impl<Key> FormField<Key> for InputField<Key>
+impl<Key, Type> FormField<Key> for InputField<Key, Type>
 where
     Key: FieldKey + 'static,
+    Type: InputType + 'static,
 {
     fn validation_errors(&self) -> &ValidationErrors<Key> {
         &self.validation_errors
