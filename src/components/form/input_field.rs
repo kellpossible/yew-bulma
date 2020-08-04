@@ -4,7 +4,7 @@ use form_validation::{AsyncValidatable, AsyncValidator, ValidationErrors};
 use yew::{html, Callback, ChangeData, Component, ComponentLink, Html, Properties, ShouldRender};
 use yewtil::future::LinkFuture;
 
-use super::{FieldLink, FieldMsg, FormField, FormFieldLink};
+use super::{FieldLink, FieldMsg, FieldProps, FormField, FormFieldLink, NeqAssignFieldProps};
 
 use std::{
     fmt::{Debug, Display},
@@ -144,6 +144,19 @@ where
     pub placeholder: String,
 }
 
+impl<Key, Value> FieldProps<Key> for InputFieldProps<Key, Value>
+where
+    Key: FieldKey + 'static,
+    Value: Clone + PartialEq,
+{
+    fn form_link(&self) -> &FormFieldLink<Key> {
+        &self.form_link
+    }
+    fn field_key(&self) -> &Key {
+        &self.field_key
+    }
+}
+
 impl<Key, Type> Component for InputField<Key, Type>
 where
     Key: Clone + PartialEq + Display + FieldKey + Hash + Eq + 'static,
@@ -249,25 +262,13 @@ where
     }
 
     fn change(&mut self, props: InputFieldProps<Key, Type::Value>) -> ShouldRender {
-        if self.props != props {
-            if self.form_link != props.form_link {
-                let form_link = props.form_link.clone();
-
-                if !form_link.field_is_registered(&props.field_key) {
-                    let field_link = InputFieldLink {
-                        field_key: props.field_key.clone(),
-                        link: self.link.clone(),
-                    };
-                    form_link.register_field(Rc::new(field_link));
-                }
-
-                self.form_link = form_link;
-            }
-            self.props = props;
-            true
-        } else {
-            false
-        }
+        let link = self.link.clone();
+        self.props.neq_assign_field(props, move |new_props| {
+            Rc::new(InputFieldLink {
+                field_key: new_props.field_key().clone(),
+                link: link.clone(),
+            })
+        })
     }
 }
 

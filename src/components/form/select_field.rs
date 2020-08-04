@@ -1,60 +1,65 @@
-use crate::components::form::{FieldKey, FieldLink, FieldMsg, FormField, FormFieldLink, FormMsg};
+use crate::components::form::{
+    FieldKey, FieldLink, FieldMsg, FormField, FormFieldLink, FormMsg, NeqAssignFieldProps,
+};
 use crate::components::select::Select;
 
-use form_validation::{Validatable, Validation, ValidationErrors, Validator};
+use form_validation::{ValidationErrors,AsyncValidator, AsyncValidatable};
 use yew::{html, Callback, Component, ComponentLink, Html, Properties, ShouldRender};
 
+use super::FieldProps;
 use std::{
     fmt::{Debug, Display},
-    rc::Rc,
+    rc::Rc, pin::Pin, future::Future,
 };
+use yewtil::future::LinkFuture;
 
 #[derive(Debug)]
-pub struct SelectField<Value, Key>
+pub struct SelectField<Key, Value>
 where
     Value: Clone + PartialEq + Display + Debug + 'static,
     Key: FieldKey + 'static,
 {
     value: Option<Value>,
     validation_errors: ValidationErrors<Key>,
-    props: SelectFieldProps<Value, Key>,
+    props: SelectFieldProps<Key, Value>,
     form_link: FormFieldLink<Key>,
     link: ComponentLink<Self>,
 }
 
-pub enum Msg<Value> {
+pub enum SelectFieldMsg<Key, Value> {
     Update(Value),
     Validate,
+    ValidationErrors(ValidationErrors<Key>)
 }
 
-pub struct SelectFieldLink<Value, Key>
+pub struct SelectFieldLink<Key, Value>
 where
     Value: Clone + PartialEq + Display + Debug + 'static,
     Key: FieldKey + 'static,
 {
     pub field_key: Key,
-    pub link: ComponentLink<SelectField<Value, Key>>,
+    pub link: ComponentLink<SelectField<Key, Value>>,
 }
 
-impl<Value, Key> Debug for SelectFieldLink<Value, Key>
+impl<Key, Value> Debug for SelectFieldLink<Key, Value>
 where
-    Value: Clone + PartialEq + Display + Debug + 'static,
     Key: FieldKey + 'static,
+    Value: Clone + PartialEq + Display + Debug + 'static,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "SelectFieldLink<{0:?}>", self.field_key())
     }
 }
 
-impl<T> Into<Msg<T>> for FieldMsg {
-    fn into(self) -> Msg<T> {
+impl<Key, Value> Into<SelectFieldMsg<Key, Value>> for FieldMsg {
+    fn into(self) -> SelectFieldMsg<Key, Value> {
         match self {
-            FieldMsg::Validate => Msg::Validate,
+            FieldMsg::Validate => SelectFieldMsg::Validate,
         }
     }
 }
 
-impl<Value, Key> FieldLink<Key> for SelectFieldLink<Value, Key>
+impl<Key, Value> FieldLink<Key> for SelectFieldLink<Key, Value>
 where
     Value: Clone + PartialEq + Display + Debug + 'static,
     Key: FieldKey + 'static,
@@ -69,10 +74,10 @@ where
 
 /// [Properties](yew::Component::Properties) for [SelectField].
 #[derive(PartialEq, Clone, Properties, Debug)]
-pub struct SelectFieldProps<Value, Key>
+pub struct SelectFieldProps<Key, Value>
 where
     Key: FieldKey + 'static,
-    Value: Clone,
+    Value: Clone + PartialEq,
 {
     pub field_key: Key,
     pub form_link: FormFieldLink<Key>,
@@ -82,20 +87,33 @@ where
     pub selected: Option<Value>,
     pub options: Vec<Value>,
     #[prop_or_default]
-    pub validator: Validator<Option<Value>, Key>,
+    pub validator: AsyncValidator<Option<Value>, Key>,
     #[prop_or_default]
     pub onchange: Callback<Value>,
 }
 
-impl<Value, Key> Component for SelectField<Value, Key>
+impl<Key, Value> FieldProps<Key> for SelectFieldProps<Key, Value>
+where
+    Key: FieldKey + 'static,
+    Value: Clone + PartialEq,
+{
+    fn form_link(&self) -> &FormFieldLink<Key> {
+        &self.form_link
+    }
+    fn field_key(&self) -> &Key {
+        &self.field_key
+    }
+}
+
+impl<Key, Value> Component for SelectField<Key, Value>
 where
     Value: Clone + PartialEq + ToString + Display + Debug + 'static,
     Key: FieldKey + 'static,
 {
-    type Message = Msg<Value>;
-    type Properties = SelectFieldProps<Value, Key>;
+    type Message = SelectFieldMsg<Key, Value>;
+    type Properties = SelectFieldProps<Key, Value>;
 
-    fn create(props: SelectFieldProps<Value, Key>, link: ComponentLink<Self>) -> Self {
+    fn create(props: SelectFieldProps<Key, Value>, link: ComponentLink<Self>) -> Self {
         let form_link = props.form_link.clone();
 
         let field_link = SelectFieldLink {
@@ -113,27 +131,36 @@ where
         }
     }
 
-    fn update(&mut self, msg: Msg<Value>) -> ShouldRender {
+    fn update(&mut self, msg: SelectFieldMsg<Key, Value>) -> ShouldRender {
         match msg {
-            Msg::Update(value) => {
+            SelectFieldMsg::Update(value) => {
                 self.value = Some(value.clone());
                 self.props.onchange.emit(value);
                 self.props
                     .form_link
                     .send_form_message(FormMsg::FieldValueUpdate(self.props.field_key.clone()));
-                self.update(Msg::Validate);
+                self.update(SelectFieldMsg::Validate);
+                true
             }
-            Msg::Validate => {
-                self.validation_errors = self.validate_or_empty();
-                self.props
-                    .form_link
+            SelectFieldMsg::Validate => {
+                let validate_future = self.validate_future_or_empty();
+                self.link.send_future(async move {
+                    let validation_errors = validate_future.await;
+
+                    SelectFieldMsg::ValidationErrors(validation_errors)
+                });
+                false
+            }
+            SelectFieldMsg::ValidationErrors(validation_errors) => {
+                self.validation_errors = validation_errors;
+                self.form_link
                     .send_form_message(FormMsg::FieldValidationUpdate(
                         self.props.field_key.clone(),
                         self.validation_errors.clone(),
-                    ))
+                    ));
+                true
             }
         }
-        true
     }
 
     fn view(&self) -> Html {
@@ -147,7 +174,7 @@ where
                 html! {}
             };
 
-        let select_onchange = self.link.callback(Msg::Update);
+        let select_onchange = self.link.callback(SelectFieldMsg::Update);
 
         html! {
             <div class="field">
@@ -173,42 +200,31 @@ where
         }
     }
 
-    fn change(&mut self, props: SelectFieldProps<Value, Key>) -> ShouldRender {
-        if self.props != props {
-            if self.form_link != props.form_link {
-                let form_link = props.form_link.clone();
-
-                if !form_link.field_is_registered(&props.field_key) {
-                    let field_link = SelectFieldLink {
-                        field_key: props.field_key.clone(),
-                        link: self.link.clone(),
-                    };
-                    form_link.register_field(Rc::new(field_link));
-                }
-
-                self.form_link = form_link;
-            }
-            self.props = props;
-            true
-        } else {
-            false
-        }
+    fn change(&mut self, props: SelectFieldProps<Key, Value>) -> ShouldRender {
+        let link = self.link.clone();
+        self.props.neq_assign_field(props, move |new_props| {
+            Rc::new(SelectFieldLink {
+                field_key: new_props.field_key().clone(),
+                link: link.clone(),
+            })
+        })
     }
 }
 
-impl<Value, Key> Validatable<Key> for SelectField<Value, Key>
+impl<Key, Value> AsyncValidatable<Key> for SelectField<Key, Value>
 where
     Key: FieldKey,
     Value: Clone + PartialEq + Display + Debug,
 {
-    fn validate(&self) -> Result<(), ValidationErrors<Key>> {
-        self.props
-            .validator
-            .validate_value(&self.value, &self.props.field_key)
+    fn validate_future(&self) -> Pin<Box<dyn Future<Output = Result<(), ValidationErrors<Key>>>>> {
+        let value = self.value.clone();
+        let field_key = self.props.field_key.clone();
+        let validator = self.props.validator.clone();
+        Box::pin(async move { validator.validate_value(&value, &field_key).await })
     }
 }
 
-impl<Value, Key> FormField<Key> for SelectField<Value, Key>
+impl<Key, Value> FormField<Key> for SelectField<Key, Value>
 where
     Key: FieldKey + 'static,
     Value: Clone + PartialEq + Display + Debug,

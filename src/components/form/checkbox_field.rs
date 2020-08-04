@@ -1,13 +1,42 @@
-use super::{FieldKey, FieldLink, FieldMsg, FormField, FormFieldLink, FormMsg};
-use form_validation::{Validatable, Validation, ValidationErrors, Validator};
-use std::{fmt::Debug, rc::Rc};
-use web_sys::HtmlInputElement;
-use yew::{html, Callback, Component, ComponentLink, NodeRef, Properties};
+use super::{
+    FieldKey, FieldLink, FieldMsg, FieldProps, FormField, FormFieldLink, FormMsg,
+    NeqAssignFieldProps,
+};
+use form_validation::{ValidationErrors, AsyncValidatable, AsyncValidator};
+use std::{fmt::Debug, rc::Rc, pin::Pin, future::Future};
+use yew::{html, Callback, Component, ComponentLink, Properties, Children};
+use yewtil::future::LinkFuture;
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum CheckboxState {
     Checked,
     Unchecked,
+}
+
+impl CheckboxState {
+    pub fn checked(&self) -> bool {
+        match self {
+            CheckboxState::Checked => true,
+            CheckboxState::Unchecked => false,
+        }
+    }
+
+    pub fn toggle(&self) -> CheckboxState {
+        match self {
+            CheckboxState::Checked => CheckboxState::Unchecked,
+            CheckboxState::Unchecked => CheckboxState::Checked,
+        }
+    }
+}
+
+impl From<bool> for CheckboxState {
+    fn from(checked: bool) -> Self {
+        if checked {
+            Self::Checked
+        } else {
+            Self::Unchecked
+        }
+    }
 }
 
 pub struct CheckboxFieldLink<Key>
@@ -27,8 +56,8 @@ where
     }
 }
 
-impl Into<CheckboxFieldMsg> for FieldMsg {
-    fn into(self) -> CheckboxFieldMsg {
+impl<Key> Into<CheckboxFieldMsg<Key>> for FieldMsg {
+    fn into(self) -> CheckboxFieldMsg<Key> {
         match self {
             FieldMsg::Validate => CheckboxFieldMsg::Validate,
         }
@@ -56,23 +85,35 @@ where
     pub field_key: Key,
     /// The link to the form that this field belongs to.
     pub form_link: FormFieldLink<Key>,
+    /// Html to use as the label for this field.
+    pub children: Children,
     /// The initial state of the checkbox.
     #[prop_or(CheckboxState::Unchecked)]
     pub initial_state: CheckboxState,
-    /// (Optional) A label to use for this field.
-    #[prop_or_default]
-    pub label: Option<String>,
     /// (Optional) What validator to use for this field.
     #[prop_or_default]
-    pub validator: Validator<CheckboxState, Key>,
+    pub validator: AsyncValidator<CheckboxState, Key>,
     /// (Optional) A callback for when this field changes.
     #[prop_or_default]
     pub onchange: Callback<CheckboxState>,
 }
 
-pub enum CheckboxFieldMsg {
+impl<Key> FieldProps<Key> for CheckboxFieldProps<Key>
+where
+    Key: FieldKey + 'static,
+{
+    fn form_link(&self) -> &FormFieldLink<Key> {
+        &self.form_link
+    }
+    fn field_key(&self) -> &Key {
+        &self.field_key
+    }
+}
+
+pub enum CheckboxFieldMsg<Key> {
     Update,
     Validate,
+    ValidationErrors(ValidationErrors<Key>)
 }
 
 pub struct CheckboxField<Key>
@@ -84,14 +125,13 @@ where
     form_link: FormFieldLink<Key>,
     link: ComponentLink<Self>,
     validation_errors: ValidationErrors<Key>,
-    node_ref: NodeRef,
 }
 
 impl<Key> Component for CheckboxField<Key>
 where
     Key: FieldKey + 'static,
 {
-    type Message = CheckboxFieldMsg;
+    type Message = CheckboxFieldMsg<Key>;
     type Properties = CheckboxFieldProps<Key>;
 
     fn create(props: Self::Properties, link: yew::ComponentLink<Self>) -> Self {
@@ -110,38 +150,31 @@ where
             link,
             props,
             validation_errors: ValidationErrors::default(),
-            node_ref: NodeRef::default(),
         }
     }
 
     fn update(&mut self, msg: Self::Message) -> yew::ShouldRender {
         match msg {
             CheckboxFieldMsg::Update => {
-                let element: HtmlInputElement = self
-                    .node_ref
-                    .cast::<HtmlInputElement>()
-                    .expect("unable to cast node ref");
-
-                let value = if element.checked() {
-                    CheckboxState::Checked
-                } else {
-                    CheckboxState::Unchecked
-                };
-
-                let changed = value != self.value;
-
-                if changed {
-                    self.value = value;
-                    self.props.onchange.emit(value);
-                    self.form_link
-                        .send_form_message(FormMsg::FieldValueUpdate(self.props.field_key.clone()));
-                    self.update(CheckboxFieldMsg::Validate);
-                }
+                self.value = self.value.toggle();
+                self.props.onchange.emit(self.value);
+                self.form_link
+                    .send_form_message(FormMsg::FieldValueUpdate(self.props.field_key.clone()));
+                self.update(CheckboxFieldMsg::Validate);
 
                 true
             }
             CheckboxFieldMsg::Validate => {
-                self.validation_errors = self.validate_or_empty();
+                let validate_future = self.validate_future_or_empty();
+                self.link.send_future(async move {
+                    let validation_errors = validate_future.await;
+
+                    CheckboxFieldMsg::ValidationErrors(validation_errors)
+                });
+                false
+            }
+            CheckboxFieldMsg::ValidationErrors(validation_errors) => {
+                self.validation_errors = validation_errors;
                 self.form_link
                     .send_form_message(FormMsg::FieldValidationUpdate(
                         self.props.field_key.clone(),
@@ -153,25 +186,13 @@ where
     }
 
     fn change(&mut self, props: Self::Properties) -> yew::ShouldRender {
-        if self.props != props {
-            if self.form_link != props.form_link {
-                let form_link = props.form_link.clone();
-
-                if !form_link.field_is_registered(&props.field_key) {
-                    let field_link = CheckboxFieldLink {
-                        field_key: props.field_key.clone(),
-                        link: self.link.clone(),
-                    };
-                    form_link.register_field(Rc::new(field_link));
-                }
-
-                self.form_link = form_link;
-            }
-            self.props = props;
-            true
-        } else {
-            false
-        }
+        let link = self.link.clone();
+        self.props.neq_assign_field(props, move |new_props| {
+            Rc::new(CheckboxFieldLink {
+                field_key: new_props.field_key().clone(),
+                link: link.clone(),
+            })
+        })
     }
     fn view(&self) -> yew::Html {
         let onchange = self.link.callback(|_| CheckboxFieldMsg::Update);
@@ -179,24 +200,25 @@ where
         html! {
             <label class="checkbox">
                 <input
-                    ref=self.node_ref.clone()
                     type="checkbox"
                     onchange=onchange
+                    checked=self.value.checked()
                     />
-            { "label" }
+                { self.props.children.clone() }
             </label>
         }
     }
 }
 
-impl<Key> Validatable<Key> for CheckboxField<Key>
+impl<Key> AsyncValidatable<Key> for CheckboxField<Key>
 where
     Key: FieldKey,
 {
-    fn validate(&self) -> Result<(), form_validation::ValidationErrors<Key>> {
-        self.props
-            .validator
-            .validate_value(&self.value, &self.props.field_key)
+    fn validate_future(&self) -> Pin<Box<dyn Future<Output = Result<(), ValidationErrors<Key>>>>> {
+        let value = self.value.clone();
+        let field_key = self.props.field_key.clone();
+        let validator = self.props.validator.clone();
+        Box::pin(async move { validator.validate_value(&value, &field_key).await })
     }
 }
 
