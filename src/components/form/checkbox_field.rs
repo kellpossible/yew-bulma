@@ -1,9 +1,8 @@
-use super::{
-    input_field::InputFieldLink, FieldKey, FieldLink, FieldMsg, FormField, FormFieldLink, FormMsg,
-};
+use super::{FieldKey, FieldLink, FieldMsg, FormField, FormFieldLink, FormMsg};
 use form_validation::{Validatable, Validation, ValidationErrors, Validator};
 use std::{fmt::Debug, rc::Rc};
-use yew::{Callback, Component, ComponentLink, Properties, ChangeData, html};
+use web_sys::HtmlInputElement;
+use yew::{html, Callback, Component, ComponentLink, NodeRef, Properties};
 
 #[derive(Copy, Clone, PartialEq)]
 pub enum CheckboxState {
@@ -72,7 +71,7 @@ where
 }
 
 pub enum CheckboxFieldMsg {
-    Update(CheckboxState),
+    Update,
     Validate,
 }
 
@@ -85,6 +84,7 @@ where
     form_link: FormFieldLink<Key>,
     link: ComponentLink<Self>,
     validation_errors: ValidationErrors<Key>,
+    node_ref: NodeRef,
 }
 
 impl<Key> Component for CheckboxField<Key>
@@ -110,12 +110,24 @@ where
             link,
             props,
             validation_errors: ValidationErrors::default(),
+            node_ref: NodeRef::default(),
         }
     }
 
     fn update(&mut self, msg: Self::Message) -> yew::ShouldRender {
         match msg {
-            CheckboxFieldMsg::Update(value) => {
+            CheckboxFieldMsg::Update => {
+                let element: HtmlInputElement = self
+                    .node_ref
+                    .cast::<HtmlInputElement>()
+                    .expect("unable to cast node ref");
+
+                let value = if element.checked() {
+                    CheckboxState::Checked
+                } else {
+                    CheckboxState::Unchecked
+                };
+
                 let changed = value != self.value;
 
                 if changed {
@@ -126,7 +138,7 @@ where
                     self.update(CheckboxFieldMsg::Validate);
                 }
 
-                changed
+                true
             }
             CheckboxFieldMsg::Validate => {
                 self.validation_errors = self.validate_or_empty();
@@ -162,19 +174,15 @@ where
         }
     }
     fn view(&self) -> yew::Html {
-        let onchange = self.link.callback(move |data: ChangeData| match data {
-            ChangeData::Value(value) => {
-                log::debug!("checkbox onchange: {:?}", value);
-                CheckboxFieldMsg::Update(CheckboxState::Checked)
-            },
-            _ => panic!("invalid data type")
-        });
-        
+        let onchange = self.link.callback(|_| CheckboxFieldMsg::Update);
+
         html! {
             <label class="checkbox">
-                <input 
+                <input
+                    ref=self.node_ref.clone()
                     type="checkbox"
-                    onchange=onchange/>
+                    onchange=onchange
+                    />
             { "label" }
             </label>
         }
@@ -192,7 +200,10 @@ where
     }
 }
 
-impl<Key> FormField<Key> for CheckboxField<Key> where Key: FieldKey {
+impl<Key> FormField<Key> for CheckboxField<Key>
+where
+    Key: FieldKey,
+{
     fn validation_errors(&self) -> &ValidationErrors<Key> {
         &self.validation_errors
     }

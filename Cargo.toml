@@ -14,8 +14,8 @@ version = "0.1.0"
 maintenance = { status = "actively-developed" }
 
 [dependencies]
-form-validation = { version = "0.1", features = ["wasm-bindgen-support"] }
-web-sys = { version = "0.3", features = ["Request"] }
+form-validation = { version = "0.2", features = ["wasm-bindgen-support", "async"] }
+web-sys = { version = "0.3", features = ["Request", "HtmlInputElement"] }
 yew = "0.17"
-yewtil = { version = "0.3", default-features = false, features = ["neq"] }
+yewtil = { version = "0.3", default-features = false, features = ["neq", "future"] }
 wasm-bindgen = "0.2"

@@ -1,13 +1,16 @@
 use crate::components::form::{FieldKey, FormMsg};
 
-use form_validation::{Validatable, Validation, ValidationErrors, Validator};
+use form_validation::{AsyncValidatable, AsyncValidator, ValidationErrors};
 use yew::{html, Callback, ChangeData, Component, ComponentLink, Html, Properties, ShouldRender};
+use yewtil::future::LinkFuture;
 
 use super::{FieldLink, FieldMsg, FormField, FormFieldLink};
 
 use std::{
     fmt::{Debug, Display},
+    future::Future,
     hash::Hash,
+    pin::Pin,
     rc::Rc,
 };
 
@@ -70,9 +73,10 @@ where
     link: ComponentLink<Self>,
 }
 
-pub enum InputFieldMsg<Value> {
+pub enum InputFieldMsg<Key, Value> {
     Update(Value),
     Validate,
+    ValidationErrors(ValidationErrors<Key>),
 }
 
 pub struct InputFieldLink<Key, Type>
@@ -94,8 +98,8 @@ where
     }
 }
 
-impl<Type> Into<InputFieldMsg<Type>> for FieldMsg {
-    fn into(self) -> InputFieldMsg<Type> {
+impl<Type, Key> Into<InputFieldMsg<Type, Key>> for FieldMsg {
+    fn into(self) -> InputFieldMsg<Type, Key> {
         match self {
             FieldMsg::Validate => InputFieldMsg::Validate,
         }
@@ -120,7 +124,7 @@ where
 pub struct InputFieldProps<Key, Value>
 where
     Key: FieldKey + 'static,
-    Value: Clone,
+    Value: Clone + PartialEq,
 {
     /// The key used to refer to this field.
     pub field_key: Key,
@@ -131,7 +135,7 @@ where
     pub label: Option<String>,
     /// (Optional) What validator to use for this field.
     #[prop_or_default]
-    pub validator: Validator<Value, Key>,
+    pub validator: AsyncValidator<Value, Key>,
     /// (Optional) A callback for when this field changes.
     #[prop_or_default]
     pub onchange: Callback<Value>,
@@ -145,7 +149,7 @@ where
     Key: Clone + PartialEq + Display + FieldKey + Hash + Eq + 'static,
     Type: InputType + 'static,
 {
-    type Message = InputFieldMsg<Type::Value>;
+    type Message = InputFieldMsg<Key, Type::Value>;
     type Properties = InputFieldProps<Key, Type::Value>;
 
     fn create(props: InputFieldProps<Key, Type::Value>, link: ComponentLink<Self>) -> Self {
@@ -167,7 +171,7 @@ where
         }
     }
 
-    fn update(&mut self, msg: InputFieldMsg<Type::Value>) -> ShouldRender {
+    fn update(&mut self, msg: InputFieldMsg<Key, Type::Value>) -> ShouldRender {
         match msg {
             InputFieldMsg::Update(value) => {
                 let changed = value != self.value;
@@ -180,10 +184,19 @@ where
                     self.update(InputFieldMsg::Validate);
                 }
 
-                changed
+                true
             }
             InputFieldMsg::Validate => {
-                self.validation_errors = self.validate_or_empty();
+                let validate_future = self.validate_future_or_empty();
+                self.link.send_future(async move {
+                    let validation_errors = validate_future.await;
+
+                    InputFieldMsg::ValidationErrors(validation_errors)
+                });
+                false
+            }
+            InputFieldMsg::ValidationErrors(validation_errors) => {
+                self.validation_errors = validation_errors;
                 self.form_link
                     .send_form_message(FormMsg::FieldValidationUpdate(
                         self.props.field_key.clone(),
@@ -258,15 +271,16 @@ where
     }
 }
 
-impl<Key, Type> Validatable<Key> for InputField<Key, Type>
+impl<Key, Type> AsyncValidatable<Key> for InputField<Key, Type>
 where
     Key: FieldKey,
     Type: InputType,
 {
-    fn validate(&self) -> Result<(), ValidationErrors<Key>> {
-        self.props
-            .validator
-            .validate_value(&self.value, &self.props.field_key)
+    fn validate_future(&self) -> Pin<Box<dyn Future<Output = Result<(), ValidationErrors<Key>>>>> {
+        let value = self.value.clone();
+        let field_key = self.props.field_key.clone();
+        let validator = self.props.validator.clone();
+        Box::pin(async move { validator.validate_value(&value, &field_key).await })
     }
 }
 
