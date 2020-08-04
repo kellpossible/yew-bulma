@@ -197,15 +197,28 @@ where
     fn view(&self) -> yew::Html {
         let onchange = self.link.callback(|_| CheckboxFieldMsg::Update);
 
+        let validation_error =
+            if let Some(errors) = self.validation_errors.get(&self.props.field_key) {
+                let error_message = errors.to_string();
+                html! {<p class="help is-danger">{ error_message }</p>}
+            } else {
+                html! {}
+            };
+
         html! {
-            <label class="checkbox">
-                <input
-                    type="checkbox"
-                    onchange=onchange
-                    checked=self.value.checked()
-                    />
-                { self.props.children.clone() }
-            </label>
+            <div class="field">
+                <div class="control">
+                    <label class="checkbox">
+                        <input
+                            type="checkbox"
+                            onchange=onchange
+                            checked=self.value.checked()
+                            />
+                        { self.props.children.clone() }
+                    </label>
+                </div>
+                { validation_error }
+            </div>
         }
     }
 }
