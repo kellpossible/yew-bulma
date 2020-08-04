@@ -47,7 +47,6 @@ pub enum FormMsg<Key> {
     FieldValidationUpdate(Key, ValidationErrors<Key>),
     ValidateThenSubmit,
     Submit,
-    Cancel,
 }
 
 /// [Properties](yew::Component::Properties) for [Form].
@@ -61,13 +60,9 @@ where
     /// Fields, buttons and other elements within the form.
     pub children: Children,
     #[prop_or_default]
-    pub oncancel: Callback<()>,
-    #[prop_or_default]
     pub onsubmit: Callback<()>,
     #[prop_or_default]
-    pub cancel_button_label: Option<String>,
-    #[prop_or_default]
-    pub submit_button_label: Option<String>,
+    pub onvalidateupdate: Callback<ValidationErrors<Key>>
 }
 
 impl<Key> Component for Form<Key>
@@ -110,12 +105,10 @@ where
                 }
                 true
             }
-            FormMsg::Cancel => {
-                self.props.oncancel.emit(());
-                true
-            }
             FormMsg::FieldValidationUpdate(key, errors) => {
                 self.validation_errors.insert(key, errors);
+
+                self.props.onvalidateupdate.emit(self.validation_errors());
 
                 if self.validating && self.all_validated() {
                     self.validating = false;
@@ -127,36 +120,9 @@ where
     }
 
     fn view(&self) -> Html {
-        let onclick_submit = self.link.callback(|_| FormMsg::ValidateThenSubmit);
-        let onclick_cancel = self.link.callback(|_| FormMsg::Cancel);
-
-        let submit_button_label = self
-            .props
-            .submit_button_label
-            .as_ref()
-            .map_or("Submit".to_string(), |label| label.clone());
-        let cancel_button_label = self
-            .props
-            .cancel_button_label
-            .as_ref()
-            .map_or("Cancel".to_string(), |label| label.clone());
-
         html! {
             <>
                 { self.props.children.clone() }
-                <div class="field is-grouped">
-                    <div class="control">
-                        <button
-                            class="button is-link"
-                            onclick=onclick_submit
-                            disabled=!self.validation_errors().is_empty()>
-                            { submit_button_label }
-                        </button>
-                    </div>
-                    <div class="control">
-                        <button class="button is-link is-light" onclick=onclick_cancel>{ cancel_button_label }</button>
-                    </div>
-                </div>
             </>
         }
     }
