@@ -2,9 +2,9 @@ use super::{
     FieldKey, FieldLink, FieldMsg, FieldProps, FormField, FormFieldLink, FormMsg,
     NeqAssignFieldProps,
 };
-use form_validation::{ValidationErrors, AsyncValidatable, AsyncValidator};
-use std::{fmt::Debug, rc::Rc, pin::Pin, future::Future};
-use yew::{html, Callback, Component, ComponentLink, Properties, Children};
+use form_validation::{AsyncValidatable, AsyncValidator, ValidationErrors};
+use std::{fmt::Debug, future::Future, pin::Pin, rc::Rc};
+use yew::{html, Callback, Children, Component, ComponentLink, Properties};
 use yewtil::future::LinkFuture;
 
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -113,7 +113,7 @@ where
 pub enum CheckboxFieldMsg<Key> {
     Update,
     Validate,
-    ValidationErrors(ValidationErrors<Key>)
+    ValidationErrors(ValidationErrors<Key>),
 }
 
 pub struct CheckboxField<Key>

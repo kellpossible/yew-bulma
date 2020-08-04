@@ -3,13 +3,15 @@ use crate::components::form::{
 };
 use crate::components::select::Select;
 
-use form_validation::{ValidationErrors,AsyncValidator, AsyncValidatable};
+use form_validation::{AsyncValidatable, AsyncValidator, ValidationErrors};
 use yew::{html, Callback, Component, ComponentLink, Html, Properties, ShouldRender};
 
 use super::FieldProps;
 use std::{
     fmt::{Debug, Display},
-    rc::Rc, pin::Pin, future::Future,
+    future::Future,
+    pin::Pin,
+    rc::Rc,
 };
 use yewtil::future::LinkFuture;
 
@@ -29,7 +31,7 @@ where
 pub enum SelectFieldMsg<Key, Value> {
     Update(Value),
     Validate,
-    ValidationErrors(ValidationErrors<Key>)
+    ValidationErrors(ValidationErrors<Key>),
 }
 
 pub struct SelectFieldLink<Key, Value>
