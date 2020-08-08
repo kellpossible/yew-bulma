@@ -62,7 +62,7 @@ where
     #[prop_or_default]
     pub onsubmit: Callback<()>,
     #[prop_or_default]
-    pub onvalidateupdate: Callback<ValidationErrors<Key>>
+    pub onvalidateupdate: Callback<ValidationErrors<Key>>,
 }
 
 impl<Key> Component for Form<Key>
