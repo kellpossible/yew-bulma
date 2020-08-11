@@ -226,15 +226,20 @@ where
 
         let select_onchange = self.link.callback(SelectFieldMsg::Update);
 
+        let label = self.label();
+
         html! {
             <div class="field">
                 {
-                    if let Some(label) = self.props.label.as_ref() {
-                        html!{
-                            <label class="label">{ label }</label>
+                    match label {
+                        Some(label) => {
+                            html!{
+                                <label class="label">{ label }</label>
+                            }
+                        },
+                        None => {
+                            html!{}
                         }
-                    } else {
-                        html!{}
                     }
                 }
                 <div class="control">
