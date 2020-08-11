@@ -1,7 +1,7 @@
 use super::{FieldKey, FieldLink, FormFieldLink};
+use form_validation::ValidationErrors;
 use std::rc::Rc;
 use yew::{Properties, ShouldRender};
-use form_validation::ValidationErrors;
 
 pub trait FieldProps<Key>
 where

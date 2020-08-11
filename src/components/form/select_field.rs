@@ -29,17 +29,16 @@ where
     link: ComponentLink<Self>,
 }
 
-impl<Value, Key> SelectField<Value, Key> 
+impl<Value, Key> SelectField<Value, Key>
 where
     Value: Clone + PartialEq + Display + Debug + 'static,
-    Key: FieldKey + 'static {
+    Key: FieldKey + 'static,
+{
     fn label(&self) -> Option<String> {
         if self.props.show_label {
             match &self.props.label {
                 Some(label) => Some(label.clone()),
-                None => {
-                    Some(self.props.field_key.to_string())
-                }
+                None => Some(self.props.field_key.to_string()),
             }
         } else {
             None
@@ -202,7 +201,7 @@ where
                 let mut display_errors = errors;
                 display_errors.extend(self.props.extra_errors.clone());
                 self.display_validation_errors = display_errors;
-                
+
                 self.form_link
                     .send_form_message(FormMsg::FieldValidationUpdate(
                         self.props.field_key.clone(),

@@ -77,14 +77,13 @@ where
 impl<Key, Type> InputField<Key, Type>
 where
     Key: FieldKey + 'static,
-    Type: InputType + 'static, {
+    Type: InputType + 'static,
+{
     fn label(&self) -> Option<String> {
         if self.props.show_label {
             match &self.props.label {
                 Some(label) => Some(label.clone()),
-                None => {
-                    Some(self.props.field_key.to_string())
-                }
+                None => Some(self.props.field_key.to_string()),
             }
         } else {
             None
@@ -314,7 +313,7 @@ where
                         },
                         None => {
                             html!{}
-                        }  
+                        }
                     }
                 }
 
@@ -353,7 +352,7 @@ where
     fn validation_errors(&self) -> &ValidationErrors<Key> {
         &self.validation_errors
     }
-    
+
     fn field_key(&self) -> &Key {
         &self.props.field_key
     }

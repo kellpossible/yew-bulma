@@ -190,7 +190,7 @@ where
             }
             CheckboxFieldMsg::ValidationErrors(errors) => {
                 self.validation_errors = errors.clone();
-                
+
                 let mut display_errors = errors;
                 display_errors.extend(self.props.extra_errors.clone());
                 self.display_validation_errors = display_errors;
