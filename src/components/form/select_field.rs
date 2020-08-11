@@ -16,34 +16,34 @@ use std::{
 use yewtil::future::LinkFuture;
 
 #[derive(Debug)]
-pub struct SelectField<Key, Value>
+pub struct SelectField<Value, Key>
 where
     Value: Clone + PartialEq + Display + Debug + 'static,
     Key: FieldKey + 'static,
 {
     value: Option<Value>,
     validation_errors: ValidationErrors<Key>,
-    props: SelectFieldProps<Key, Value>,
+    props: SelectFieldProps<Value, Key>,
     form_link: FormFieldLink<Key>,
     link: ComponentLink<Self>,
 }
 
-pub enum SelectFieldMsg<Key, Value> {
+pub enum SelectFieldMsg<Value, Key> {
     Update(Value),
     Validate,
     ValidationErrors(ValidationErrors<Key>),
 }
 
-pub struct SelectFieldLink<Key, Value>
+pub struct SelectFieldLink<Value, Key>
 where
     Value: Clone + PartialEq + Display + Debug + 'static,
     Key: FieldKey + 'static,
 {
     pub field_key: Key,
-    pub link: ComponentLink<SelectField<Key, Value>>,
+    pub link: ComponentLink<SelectField<Value, Key>>,
 }
 
-impl<Key, Value> Debug for SelectFieldLink<Key, Value>
+impl<Value, Key> Debug for SelectFieldLink<Value, Key>
 where
     Key: FieldKey + 'static,
     Value: Clone + PartialEq + Display + Debug + 'static,
@@ -53,15 +53,15 @@ where
     }
 }
 
-impl<Key, Value> Into<SelectFieldMsg<Key, Value>> for FieldMsg {
-    fn into(self) -> SelectFieldMsg<Key, Value> {
+impl<Value, Key> Into<SelectFieldMsg<Value, Key>> for FieldMsg {
+    fn into(self) -> SelectFieldMsg<Value, Key> {
         match self {
             FieldMsg::Validate => SelectFieldMsg::Validate,
         }
     }
 }
 
-impl<Key, Value> FieldLink<Key> for SelectFieldLink<Key, Value>
+impl<Value, Key> FieldLink<Key> for SelectFieldLink<Value, Key>
 where
     Value: Clone + PartialEq + Display + Debug + 'static,
     Key: FieldKey + 'static,
@@ -76,7 +76,7 @@ where
 
 /// [Properties](yew::Component::Properties) for [SelectField].
 #[derive(PartialEq, Clone, Properties, Debug)]
-pub struct SelectFieldProps<Key, Value>
+pub struct SelectFieldProps<Value, Key>
 where
     Key: FieldKey + 'static,
     Value: Clone + PartialEq,
@@ -94,7 +94,7 @@ where
     pub onchange: Callback<Value>,
 }
 
-impl<Key, Value> FieldProps<Key> for SelectFieldProps<Key, Value>
+impl<Value, Key> FieldProps<Key> for SelectFieldProps<Value, Key>
 where
     Key: FieldKey + 'static,
     Value: Clone + PartialEq,
@@ -107,15 +107,15 @@ where
     }
 }
 
-impl<Key, Value> Component for SelectField<Key, Value>
+impl<Value, Key> Component for SelectField<Value, Key>
 where
     Value: Clone + PartialEq + ToString + Display + Debug + 'static,
     Key: FieldKey + 'static,
 {
-    type Message = SelectFieldMsg<Key, Value>;
-    type Properties = SelectFieldProps<Key, Value>;
+    type Message = SelectFieldMsg<Value, Key>;
+    type Properties = SelectFieldProps<Value, Key>;
 
-    fn create(props: SelectFieldProps<Key, Value>, link: ComponentLink<Self>) -> Self {
+    fn create(props: SelectFieldProps<Value, Key>, link: ComponentLink<Self>) -> Self {
         let form_link = props.form_link.clone();
 
         let field_link = SelectFieldLink {
@@ -133,7 +133,7 @@ where
         }
     }
 
-    fn update(&mut self, msg: SelectFieldMsg<Key, Value>) -> ShouldRender {
+    fn update(&mut self, msg: SelectFieldMsg<Value, Key>) -> ShouldRender {
         match msg {
             SelectFieldMsg::Update(value) => {
                 self.value = Some(value.clone());
@@ -202,7 +202,7 @@ where
         }
     }
 
-    fn change(&mut self, props: SelectFieldProps<Key, Value>) -> ShouldRender {
+    fn change(&mut self, props: SelectFieldProps<Value, Key>) -> ShouldRender {
         let link = self.link.clone();
         self.props.neq_assign_field(props, move |new_props| {
             Rc::new(SelectFieldLink {
@@ -213,7 +213,7 @@ where
     }
 }
 
-impl<Key, Value> AsyncValidatable<Key> for SelectField<Key, Value>
+impl<Value, Key> AsyncValidatable<Key> for SelectField<Value, Key>
 where
     Key: FieldKey,
     Value: Clone + PartialEq + Display + Debug,
@@ -226,7 +226,7 @@ where
     }
 }
 
-impl<Key, Value> FormField<Key> for SelectField<Key, Value>
+impl<Value, Key> FormField<Key> for SelectField<Value, Key>
 where
     Key: FieldKey + 'static,
     Value: Clone + PartialEq + Display + Debug,
