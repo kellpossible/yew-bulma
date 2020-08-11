@@ -96,6 +96,13 @@ where
     /// (Optional) A callback for when this field changes.
     #[prop_or_default]
     pub onchange: Callback<CheckboxState>,
+    /// (Optional) Whether to validate when the field is updated.
+    #[prop_or(true)]
+    pub validate_on_update: bool,
+    /// (Optional) Extra validation errors to display. These errors
+    /// are not reported to the `Form`.
+    #[prop_or_default]
+    pub extra_errors: ValidationErrors<Key>,
 }
 
 impl<Key> FieldProps<Key> for CheckboxFieldProps<Key>
@@ -107,6 +114,9 @@ where
     }
     fn field_key(&self) -> &Key {
         &self.field_key
+    }
+    fn extra_errors(&self) -> &ValidationErrors<Key> {
+        &self.extra_errors
     }
 }
 
@@ -125,6 +135,7 @@ where
     form_link: FormFieldLink<Key>,
     link: ComponentLink<Self>,
     validation_errors: ValidationErrors<Key>,
+    display_validation_errors: ValidationErrors<Key>,
 }
 
 impl<Key> Component for CheckboxField<Key>
@@ -148,8 +159,9 @@ where
             value: props.initial_state,
             form_link,
             link,
-            props,
             validation_errors: ValidationErrors::default(),
+            display_validation_errors: props.extra_errors.clone(),
+            props,
         }
     }
 
@@ -160,7 +172,10 @@ where
                 self.props.onchange.emit(self.value);
                 self.form_link
                     .send_form_message(FormMsg::FieldValueUpdate(self.props.field_key.clone()));
-                self.update(CheckboxFieldMsg::Validate);
+
+                if self.props.validate_on_update {
+                    self.update(CheckboxFieldMsg::Validate);
+                }
 
                 true
             }
@@ -173,8 +188,13 @@ where
                 });
                 false
             }
-            CheckboxFieldMsg::ValidationErrors(validation_errors) => {
-                self.validation_errors = validation_errors;
+            CheckboxFieldMsg::ValidationErrors(errors) => {
+                self.validation_errors = errors.clone();
+                
+                let mut display_errors = errors;
+                display_errors.extend(self.props.extra_errors.clone());
+                self.display_validation_errors = display_errors;
+
                 self.form_link
                     .send_form_message(FormMsg::FieldValidationUpdate(
                         self.props.field_key.clone(),
@@ -187,6 +207,11 @@ where
 
     fn change(&mut self, props: Self::Properties) -> yew::ShouldRender {
         let link = self.link.clone();
+
+        if self.props.extra_errors != props.extra_errors {
+            self.validation_errors.extend(props.extra_errors.clone())
+        }
+
         self.props.neq_assign_field(props, move |new_props| {
             Rc::new(CheckboxFieldLink {
                 field_key: new_props.field_key().clone(),
@@ -198,7 +223,7 @@ where
         let onchange = self.link.callback(|_| CheckboxFieldMsg::Update);
 
         let validation_error =
-            if let Some(errors) = self.validation_errors.get(&self.props.field_key) {
+            if let Some(errors) = self.display_validation_errors.get(&self.props.field_key) {
                 let error_message = errors.to_string();
                 html! {<p class="help is-danger">{ error_message }</p>}
             } else {

@@ -68,15 +68,36 @@ where
 {
     value: Type::Value,
     validation_errors: ValidationErrors<Key>,
+    display_validation_errors: ValidationErrors<Key>,
     props: InputFieldProps<Key, Type::Value>,
     form_link: FormFieldLink<Key>,
     link: ComponentLink<Self>,
 }
 
+impl<Key, Type> InputField<Key, Type>
+where
+    Key: FieldKey + 'static,
+    Type: InputType + 'static, {
+    fn label(&self) -> Option<String> {
+        if self.props.show_label {
+            match &self.props.label {
+                Some(label) => Some(label.clone()),
+                None => {
+                    Some(self.props.field_key.to_string())
+                }
+            }
+        } else {
+            None
+        }
+    }
+}
+
 pub enum InputFieldMsg<Key, Value> {
     Update(Value),
+    /// Validate this field, sends a [FormMsg::FieldValidationUpdate]
+    /// to the `form_link` upon completion.
     Validate,
-    ValidationErrors(ValidationErrors<Key>),
+    SetValidationErrors(ValidationErrors<Key>),
 }
 
 pub struct InputFieldLink<Key, Type>
@@ -130,7 +151,14 @@ where
     pub field_key: Key,
     /// The link to the form that this field belongs to.
     pub form_link: FormFieldLink<Key>,
-    /// (Optional) A label to use for this field.
+    /// Whether to show the label. By default this is `true`. By
+    /// default the label text comes fom the `field_key`'s `Display`
+    /// implementation, however it can be overriden with the `label`
+    /// property.
+    #[prop_or(true)]
+    pub show_label: bool,
+    /// (Optional) Override the default label. Only displays if
+    /// `show_label` is `true` (which it is by default).
     #[prop_or_default]
     pub label: Option<String>,
     /// (Optional) What validator to use for this field.
@@ -142,6 +170,13 @@ where
     /// (Optional) A placeholder string.
     #[prop_or_default]
     pub placeholder: String,
+    /// (Optional) Whether to validate when the field is updated.
+    #[prop_or(true)]
+    pub validate_on_update: bool,
+    /// (Optional) Extra validation errors to display. These errors
+    /// are not reported to the `Form`.
+    #[prop_or_default]
+    pub extra_errors: ValidationErrors<Key>,
 }
 
 impl<Key, Value> FieldProps<Key> for InputFieldProps<Key, Value>
@@ -154,6 +189,9 @@ where
     }
     fn field_key(&self) -> &Key {
         &self.field_key
+    }
+    fn extra_errors(&self) -> &ValidationErrors<Key> {
+        &self.extra_errors
     }
 }
 
@@ -178,6 +216,7 @@ where
         InputField {
             value: Type::default_value(),
             validation_errors: ValidationErrors::default(),
+            display_validation_errors: props.extra_errors.clone(),
             props,
             form_link,
             link,
@@ -194,7 +233,10 @@ where
                     self.props.onchange.emit(value);
                     self.form_link
                         .send_form_message(FormMsg::FieldValueUpdate(self.props.field_key.clone()));
-                    self.update(InputFieldMsg::Validate);
+
+                    if self.props.validate_on_update {
+                        self.update(InputFieldMsg::Validate);
+                    }
                 }
 
                 true
@@ -204,12 +246,17 @@ where
                 self.link.send_future(async move {
                     let validation_errors = validate_future.await;
 
-                    InputFieldMsg::ValidationErrors(validation_errors)
+                    InputFieldMsg::SetValidationErrors(validation_errors)
                 });
                 false
             }
-            InputFieldMsg::ValidationErrors(validation_errors) => {
-                self.validation_errors = validation_errors;
+            InputFieldMsg::SetValidationErrors(errors) => {
+                self.validation_errors = errors.clone();
+
+                let mut display_errors = errors;
+                display_errors.extend(self.props.extra_errors.clone());
+                self.display_validation_errors = display_errors;
+
                 self.form_link
                     .send_form_message(FormMsg::FieldValidationUpdate(
                         self.props.field_key.clone(),
@@ -220,10 +267,28 @@ where
         }
     }
 
+    fn change(&mut self, props: InputFieldProps<Key, Type::Value>) -> ShouldRender {
+        let link = self.link.clone();
+
+        if self.props.extra_errors != props.extra_errors {
+            let mut errors = self.validation_errors.clone();
+            errors.extend(props.extra_errors.clone());
+            self.display_validation_errors = errors;
+        }
+
+        self.props.neq_assign_field(props, move |new_props| {
+            Rc::new(InputFieldLink {
+                field_key: new_props.field_key().clone(),
+                link: link.clone(),
+            })
+        })
+    }
+
     fn view(&self) -> Html {
         let mut classes = vec!["input".to_string()];
+
         let validation_error =
-            if let Some(errors) = self.validation_errors.get(&self.props.field_key) {
+            if let Some(errors) = self.display_validation_errors.get(&self.props.field_key) {
                 classes.push("is-danger".to_string());
                 let error_message = errors.to_string();
                 html! {<p class="help is-danger">{ error_message }</p>}
@@ -236,15 +301,20 @@ where
             _ => panic!("invalid data type"),
         });
 
+        let label = self.label();
+
         html! {
             <div class="field">
                 {
-                    if let Some(label) = self.props.label.as_ref() {
-                        html!{
-                            <label class="label">{ label }</label>
-                        }
-                    } else {
-                        html!{}
+                    match label {
+                        Some(label) => {
+                            html!{
+                                <label class="label">{ label }</label>
+                            }
+                        },
+                        None => {
+                            html!{}
+                        }  
                     }
                 }
 
@@ -259,16 +329,6 @@ where
                 { validation_error }
             </div>
         }
-    }
-
-    fn change(&mut self, props: InputFieldProps<Key, Type::Value>) -> ShouldRender {
-        let link = self.link.clone();
-        self.props.neq_assign_field(props, move |new_props| {
-            Rc::new(InputFieldLink {
-                field_key: new_props.field_key().clone(),
-                link: link.clone(),
-            })
-        })
     }
 }
 
@@ -293,6 +353,7 @@ where
     fn validation_errors(&self) -> &ValidationErrors<Key> {
         &self.validation_errors
     }
+    
     fn field_key(&self) -> &Key {
         &self.props.field_key
     }

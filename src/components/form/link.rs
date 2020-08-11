@@ -28,6 +28,8 @@ pub trait FormField<Key> {
 
 #[derive(Copy, Clone)]
 pub enum FieldMsg {
+    /// Validate the field, sends a [FormMsg::FieldValidationUpdate]
+    /// to the [FormFieldLink] upon completion.
     Validate,
 }
 

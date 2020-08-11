@@ -59,8 +59,11 @@ where
     pub field_link: FormFieldLink<Key>,
     /// Fields, buttons and other elements within the form.
     pub children: Children,
+    /// Triggered when the form has been requested to submit, returns
+    /// errors if the fields in the form currently contain any
+    /// validation errors.
     #[prop_or_default]
-    pub onsubmit: Callback<()>,
+    pub onsubmit: Callback<Result<(), ValidationErrors<Key>>>,
     #[prop_or_default]
     pub onvalidateupdate: Callback<ValidationErrors<Key>>,
 }
@@ -100,9 +103,13 @@ where
                 false
             }
             FormMsg::Submit => {
-                if self.validation_errors().is_empty() {
-                    self.props.onsubmit.emit(());
-                }
+                let validation_errors = self.validation_errors();
+                let result = if validation_errors.is_empty() {
+                    Ok(())
+                } else {
+                    Err(validation_errors)
+                };
+                self.props.onsubmit.emit(result);
                 true
             }
             FormMsg::FieldValidationUpdate(key, errors) => {

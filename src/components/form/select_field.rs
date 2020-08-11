@@ -23,9 +23,28 @@ where
 {
     value: Option<Value>,
     validation_errors: ValidationErrors<Key>,
+    display_validation_errors: ValidationErrors<Key>,
     props: SelectFieldProps<Value, Key>,
     form_link: FormFieldLink<Key>,
     link: ComponentLink<Self>,
+}
+
+impl<Value, Key> SelectField<Value, Key> 
+where
+    Value: Clone + PartialEq + Display + Debug + 'static,
+    Key: FieldKey + 'static {
+    fn label(&self) -> Option<String> {
+        if self.props.show_label {
+            match &self.props.label {
+                Some(label) => Some(label.clone()),
+                None => {
+                    Some(self.props.field_key.to_string())
+                }
+            }
+        } else {
+            None
+        }
+    }
 }
 
 pub enum SelectFieldMsg<Value, Key> {
@@ -81,17 +100,37 @@ where
     Key: FieldKey + 'static,
     Value: Clone + PartialEq,
 {
+    /// The key used to refer to this field.
     pub field_key: Key,
     pub form_link: FormFieldLink<Key>,
+    /// The options available to this select field.
+    pub options: Vec<Value>,
+    /// Whether to show the label. By default this is `true`. By
+    /// default the label text comes fom the `field_key`'s `Display`
+    /// implementation, however it can be overriden with the `label`
+    /// property.
+    #[prop_or(true)]
+    pub show_label: bool,
+    /// (Optional) Override the default label. Only displays if
+    /// `show_label` is `true` (which it is by default).
     #[prop_or_default]
     pub label: Option<String>,
+    /// (Optional) The default selected value.
     #[prop_or_default]
     pub selected: Option<Value>,
-    pub options: Vec<Value>,
+    /// (Optional) What validator to use for this field.
     #[prop_or_default]
     pub validator: AsyncValidator<Option<Value>, Key>,
+    /// (Optional) A callback for when this field changes.
     #[prop_or_default]
     pub onchange: Callback<Value>,
+    /// (Optional) Whether to validate when the field is updated.
+    #[prop_or(true)]
+    pub validate_on_update: bool,
+    /// (Optional) Extra validation errors to display. These errors
+    /// are not reported to the `Form`.
+    #[prop_or_default]
+    pub extra_errors: ValidationErrors<Key>,
 }
 
 impl<Value, Key> FieldProps<Key> for SelectFieldProps<Value, Key>
@@ -104,6 +143,9 @@ where
     }
     fn field_key(&self) -> &Key {
         &self.field_key
+    }
+    fn extra_errors(&self) -> &ValidationErrors<Key> {
+        &self.extra_errors
     }
 }
 
@@ -127,6 +169,7 @@ where
         SelectField {
             value: props.selected.clone(),
             validation_errors: ValidationErrors::default(),
+            display_validation_errors: props.extra_errors.clone(),
             props,
             form_link,
             link,
@@ -153,8 +196,13 @@ where
                 });
                 false
             }
-            SelectFieldMsg::ValidationErrors(validation_errors) => {
-                self.validation_errors = validation_errors;
+            SelectFieldMsg::ValidationErrors(errors) => {
+                self.validation_errors = errors.clone();
+
+                let mut display_errors = errors;
+                display_errors.extend(self.props.extra_errors.clone());
+                self.display_validation_errors = display_errors;
+                
                 self.form_link
                     .send_form_message(FormMsg::FieldValidationUpdate(
                         self.props.field_key.clone(),
@@ -167,8 +215,9 @@ where
 
     fn view(&self) -> Html {
         let mut classes = vec![];
+
         let validation_error =
-            if let Some(errors) = self.validation_errors.get(&self.props.field_key) {
+            if let Some(errors) = self.display_validation_errors.get(&self.props.field_key) {
                 classes.push("is-danger".to_string());
                 let error_message = errors.to_string();
                 html! {<p class="help is-danger">{ error_message }</p>}
@@ -204,6 +253,7 @@ where
 
     fn change(&mut self, props: SelectFieldProps<Value, Key>) -> ShouldRender {
         let link = self.link.clone();
+
         self.props.neq_assign_field(props, move |new_props| {
             Rc::new(SelectFieldLink {
                 field_key: new_props.field_key().clone(),

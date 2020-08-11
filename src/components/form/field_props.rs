@@ -1,6 +1,7 @@
 use super::{FieldKey, FieldLink, FormFieldLink};
 use std::rc::Rc;
 use yew::{Properties, ShouldRender};
+use form_validation::ValidationErrors;
 
 pub trait FieldProps<Key>
 where
@@ -8,6 +9,7 @@ where
 {
     fn form_link(&self) -> &FormFieldLink<Key>;
     fn field_key(&self) -> &Key;
+    fn extra_errors(&self) -> &ValidationErrors<Key>;
 }
 
 pub trait NeqAssignFieldProps<Key>: FieldProps<Key> + Properties
