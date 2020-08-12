@@ -47,6 +47,8 @@ pub enum FormMsg<Key> {
     FieldValidationUpdate(Key, ValidationErrors<Key>),
     ValidateThenSubmit,
     Submit,
+    // An event that will be ignored (to use in callbacks)
+    Ignore,
 }
 
 /// [Properties](yew::Component::Properties) for [Form].
@@ -64,8 +66,17 @@ where
     /// validation errors.
     #[prop_or_default]
     pub onsubmit: Callback<Result<(), ValidationErrors<Key>>>,
+    /// Triggered when form receives a [FormMsg::ValidateThenSubmit],
+    /// and it has begun validation.
+    #[prop_or_default]
+    pub onsubmit_validate_start: Callback<()>,
+    /// Triggered when elements in this form have been validated.
     #[prop_or_default]
     pub onvalidateupdate: Callback<ValidationErrors<Key>>,
+    /// Whether to trigger the onsubmit event/callback when the
+    /// internal `<form>`'s submit action is invoked.
+    #[prop_or(true)]
+    pub form_onsubmit: bool,
 }
 
 impl<Key> Component for Form<Key>
@@ -92,6 +103,8 @@ where
         match msg {
             FormMsg::FieldValueUpdate(_) => true,
             FormMsg::ValidateThenSubmit => {
+                self.props.onsubmit_validate_start.emit(());
+
                 // Clear the errors to ensure that we re-validate all the fields.
                 self.validation_errors.clear();
                 self.validating = true;
@@ -123,14 +136,27 @@ where
                 }
                 true
             }
+            FormMsg::Ignore => false,
         }
     }
 
     fn view(&self) -> Html {
+        let form_onsubmit = self.props.form_onsubmit;
+        let onsubmit = self.link.callback(move |event: web_sys::FocusEvent| {
+            // Prevent the default browser action of refreshing the page!
+            event.prevent_default();
+
+            if form_onsubmit {
+                FormMsg::ValidateThenSubmit
+            } else {
+                FormMsg::Ignore
+            }
+        });
+
         html! {
-            <>
+            <form onsubmit=onsubmit>
                 { self.props.children.clone() }
-            </>
+            </form>
         }
     }
 

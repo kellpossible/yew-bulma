@@ -31,6 +31,7 @@ pub enum FieldMsg {
     /// Validate the field, sends a [FormMsg::FieldValidationUpdate]
     /// to the [FormFieldLink] upon completion.
     Validate,
+    ClearValidationErrors,
 }
 
 #[derive(Clone, Debug)]

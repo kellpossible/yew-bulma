@@ -50,6 +50,7 @@ pub enum SelectFieldMsg<Value, Key> {
     Update(Value),
     Validate,
     ValidationErrors(ValidationErrors<Key>),
+    ClearValidationErrors,
 }
 
 pub struct SelectFieldLink<Value, Key>
@@ -75,6 +76,7 @@ impl<Value, Key> Into<SelectFieldMsg<Value, Key>> for FieldMsg {
     fn into(self) -> SelectFieldMsg<Value, Key> {
         match self {
             FieldMsg::Validate => SelectFieldMsg::Validate,
+            FieldMsg::ClearValidationErrors => SelectFieldMsg::ClearValidationErrors,
         }
     }
 }
@@ -201,6 +203,17 @@ where
                 let mut display_errors = errors;
                 display_errors.extend(self.props.extra_errors.clone());
                 self.display_validation_errors = display_errors;
+
+                self.form_link
+                    .send_form_message(FormMsg::FieldValidationUpdate(
+                        self.props.field_key.clone(),
+                        self.validation_errors.clone(),
+                    ));
+                true
+            }
+            SelectFieldMsg::ClearValidationErrors => {
+                self.validation_errors = ValidationErrors::default();
+                self.display_validation_errors = self.props.extra_errors.clone();
 
                 self.form_link
                     .send_form_message(FormMsg::FieldValidationUpdate(

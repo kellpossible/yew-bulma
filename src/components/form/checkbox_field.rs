@@ -60,6 +60,7 @@ impl<Key> Into<CheckboxFieldMsg<Key>> for FieldMsg {
     fn into(self) -> CheckboxFieldMsg<Key> {
         match self {
             FieldMsg::Validate => CheckboxFieldMsg::Validate,
+            FieldMsg::ClearValidationErrors => CheckboxFieldMsg::ClearValidationErrors,
         }
     }
 }
@@ -124,6 +125,7 @@ pub enum CheckboxFieldMsg<Key> {
     Update,
     Validate,
     ValidationErrors(ValidationErrors<Key>),
+    ClearValidationErrors,
 }
 
 pub struct CheckboxField<Key>
@@ -194,6 +196,17 @@ where
                 let mut display_errors = errors;
                 display_errors.extend(self.props.extra_errors.clone());
                 self.display_validation_errors = display_errors;
+
+                self.form_link
+                    .send_form_message(FormMsg::FieldValidationUpdate(
+                        self.props.field_key.clone(),
+                        self.validation_errors.clone(),
+                    ));
+                true
+            }
+            CheckboxFieldMsg::ClearValidationErrors => {
+                self.validation_errors = ValidationErrors::default();
+                self.display_validation_errors = self.props.extra_errors.clone();
 
                 self.form_link
                     .send_form_message(FormMsg::FieldValidationUpdate(

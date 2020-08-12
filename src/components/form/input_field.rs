@@ -1,7 +1,7 @@
 use crate::components::form::{FieldKey, FormMsg};
 
 use form_validation::{AsyncValidatable, AsyncValidator, ValidationErrors};
-use yew::{html, Callback, ChangeData, Component, ComponentLink, Html, Properties, ShouldRender};
+use yew::{html, Callback, ChangeData, Component, ComponentLink, Html, Properties, ShouldRender, InputData};
 use yewtil::future::LinkFuture;
 
 use super::{FieldLink, FieldMsg, FieldProps, FormField, FormFieldLink, NeqAssignFieldProps};
@@ -97,6 +97,7 @@ pub enum InputFieldMsg<Key, Value> {
     /// to the `form_link` upon completion.
     Validate,
     SetValidationErrors(ValidationErrors<Key>),
+    ClearValidationErrors,
 }
 
 pub struct InputFieldLink<Key, Type>
@@ -122,6 +123,7 @@ impl<Type, Key> Into<InputFieldMsg<Type, Key>> for FieldMsg {
     fn into(self) -> InputFieldMsg<Type, Key> {
         match self {
             FieldMsg::Validate => InputFieldMsg::Validate,
+            FieldMsg::ClearValidationErrors => InputFieldMsg::ClearValidationErrors,
         }
     }
 }
@@ -137,6 +139,22 @@ where
     fn send_message(&self, msg: FieldMsg) {
         self.link.send_message(msg)
     }
+}
+
+/// See [InputFieldProps::validate_on].
+#[derive(Clone, Debug, Copy, PartialEq)]
+pub enum UpdateOn {
+    /// Update and validate when `onchange` for the field fires. This
+    /// happens when a change is committed. See [change
+    /// event](https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/change_event)
+    /// for more details.
+    ChangeEvent,
+    /// Update anda validate with `oninput` for the field (and also
+    /// with onchange). This happens when the text changes as the user
+    /// types. See [input
+    /// event](https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/input_event)
+    /// for more details.
+    InputEvent,
 }
 
 /// [Properties](yew::Component::Properties) for [InputField].
@@ -163,6 +181,13 @@ where
     /// (Optional) What validator to use for this field.
     #[prop_or_default]
     pub validator: AsyncValidator<Value, Key>,
+    /// (Optional) Choose which event will cause the field to be
+    /// updated and validated. This is [UpdateOn::ChangeEvent] by
+    /// default. Using [UpdateOn::InputEvent] will incurr a higher
+    /// performance cost, but will react immediately to the user's
+    /// input.
+    #[prop_or(UpdateOn::ChangeEvent)]
+    pub update_on: UpdateOn,
     /// (Optional) A callback for when this field changes.
     #[prop_or_default]
     pub onchange: Callback<Value>,
@@ -263,6 +288,17 @@ where
                     ));
                 true
             }
+            InputFieldMsg::ClearValidationErrors => {
+                self.validation_errors = ValidationErrors::default();
+                self.display_validation_errors = self.props.extra_errors.clone();
+
+                self.form_link
+                    .send_form_message(FormMsg::FieldValidationUpdate(
+                        self.props.field_key.clone(),
+                        self.validation_errors.clone(),
+                    ));
+                true
+            }
         }
     }
 
@@ -295,6 +331,13 @@ where
                 html! {}
             };
 
+        let input_oninput = match self.props.update_on {
+            UpdateOn::ChangeEvent => Callback::default(),
+            UpdateOn::InputEvent => self.link.callback(move |data: InputData| {
+                InputFieldMsg::Update(Type::value_from_html_value(&data.value))
+            }),
+        };
+
         let input_onchange = self.link.callback(move |data: ChangeData| match data {
             ChangeData::Value(value) => InputFieldMsg::Update(Type::value_from_html_value(&value)),
             _ => panic!("invalid data type"),
@@ -323,6 +366,7 @@ where
                         value=self.value
                         type=Type::input_type()
                         placeholder=self.props.placeholder
+                        oninput=input_oninput
                         onchange=input_onchange/>
                 </div>
                 { validation_error }
