@@ -1,7 +1,9 @@
 use crate::components::form::{FieldKey, FormMsg};
 
 use form_validation::{AsyncValidatable, AsyncValidator, ValidationErrors};
-use yew::{html, Callback, ChangeData, Component, ComponentLink, Html, Properties, ShouldRender, InputData};
+use yew::{
+    html, Callback, ChangeData, Component, ComponentLink, Html, InputData, Properties, ShouldRender,
+};
 use yewtil::future::LinkFuture;
 
 use super::{FieldLink, FieldMsg, FieldProps, FormField, FormFieldLink, NeqAssignFieldProps};
@@ -184,7 +186,7 @@ pub enum ValidateOn {
     /// triggered the update.
     AnyEvent,
     /// Don't update the validations for any events.
-    None
+    None,
 }
 
 /// [Properties](yew::Component::Properties) for [InputField].
@@ -299,7 +301,7 @@ where
                 if changed {
                     self.value = value.clone();
                     self.props.onupdate.emit(value);
-                    
+
                     self.form_link
                         .send_form_message(FormMsg::FieldValueUpdate(self.props.field_key.clone()));
 
@@ -387,12 +389,18 @@ where
         let input_oninput = match self.props.update_on {
             UpdateOn::ChangeEvent => Callback::default(),
             UpdateOn::InputAndChangeEvent => self.link.callback(move |data: InputData| {
-                InputFieldMsg::Update(Type::value_from_html_value(&data.value), UpdateSource::InputEvent)
+                InputFieldMsg::Update(
+                    Type::value_from_html_value(&data.value),
+                    UpdateSource::InputEvent,
+                )
             }),
         };
 
         let input_onchange = self.link.callback(move |data: ChangeData| match data {
-            ChangeData::Value(value) => InputFieldMsg::Update(Type::value_from_html_value(&value), UpdateSource::ChangeEvent),
+            ChangeData::Value(value) => InputFieldMsg::Update(
+                Type::value_from_html_value(&value),
+                UpdateSource::ChangeEvent,
+            ),
             _ => panic!("invalid data type"),
         });
 
