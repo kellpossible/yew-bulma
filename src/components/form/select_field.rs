@@ -124,7 +124,7 @@ where
     pub validator: AsyncValidator<Option<Value>, Key>,
     /// (Optional) A callback for when this field changes.
     #[prop_or_default]
-    pub onchange: Callback<Value>,
+    pub onupdate: Callback<Value>,
     /// (Optional) Whether to validate when the field is updated.
     #[prop_or(true)]
     pub validate_on_update: bool,
@@ -181,7 +181,7 @@ where
         match msg {
             SelectFieldMsg::Update(value) => {
                 self.value = Some(value.clone());
-                self.props.onchange.emit(value);
+                self.props.onupdate.emit(value);
                 self.props
                     .form_link
                     .send_form_message(FormMsg::FieldValueUpdate(self.props.field_key.clone()));

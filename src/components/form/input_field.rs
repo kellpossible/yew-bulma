@@ -92,7 +92,8 @@ where
 }
 
 pub enum InputFieldMsg<Key, Value> {
-    Update(Value),
+    /// Update the value in the field.
+    Update(Value, UpdateSource),
     /// Validate this field, sends a [FormMsg::FieldValidationUpdate]
     /// to the `form_link` upon completion.
     Validate,
@@ -141,20 +142,49 @@ where
     }
 }
 
-/// See [InputFieldProps::validate_on].
+pub enum UpdateSource {
+    ChangeEvent,
+    InputEvent,
+}
+
+/// See [InputFieldProps::update_on].
 #[derive(Clone, Debug, Copy, PartialEq)]
 pub enum UpdateOn {
-    /// Update and validate when `onchange` for the field fires. This
-    /// happens when a change is committed. See [change
+    /// Update and validate (depending also on
+    /// [InputFieldProps::validate_on]) when `onchange` for the field
+    /// fires. This happens when a change is committed. See [change
     /// event](https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/change_event)
     /// for more details.
     ChangeEvent,
-    /// Update anda validate with `oninput` for the field (and also
-    /// with onchange). This happens when the text changes as the user
-    /// types. See [input
+    /// Update and validate (depending also on
+    /// [InputFieldProps::validate_on]) with `oninput` for the field
+    /// (and also with onchange). This happens when the text changes
+    /// as the user types. See [input
     /// event](https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/input_event)
+    /// for more details. Also update and validate when the
+    /// `onchange` for the field fires. This happens when a change is
+    /// committed. See [change
+    /// event](https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/change_event)
     /// for more details.
-    InputEvent,
+    InputAndChangeEvent,
+}
+
+/// See [InputFieldProps::validate_on].
+#[derive(Clone, Debug, Copy, PartialEq)]
+pub enum ValidateOn {
+    /// Validate when an update fires (determined by
+    /// [InputFieldProps::update_on]) and this update was triggered by
+    /// an `onchange` event for the field. This happens when a change
+    /// is committed. See [change
+    /// event](https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/change_event)
+    /// for more details.
+    ChangeEvent,
+    /// Validate when an update fires (determined by
+    /// [InputFieldProps::update_on]), regardless of the event that
+    /// triggered the update.
+    AnyEvent,
+    /// Don't update the validations for any events.
+    None
 }
 
 /// [Properties](yew::Component::Properties) for [InputField].
@@ -182,21 +212,35 @@ where
     #[prop_or_default]
     pub validator: AsyncValidator<Value, Key>,
     /// (Optional) Choose which event will cause the field to be
-    /// updated and validated. This is [UpdateOn::ChangeEvent] by
-    /// default. Using [UpdateOn::InputEvent] will incurr a higher
+    /// updated, and validated (depending also on
+    /// [InputFieldProps::validate_on]). This is
+    /// [UpdateOn::ChangeEvent] by default. Using
+    /// [UpdateOn::InputAndChangeEvent] will incurr a higher
     /// performance cost, but will react immediately to the user's
     /// input.
     #[prop_or(UpdateOn::ChangeEvent)]
     pub update_on: UpdateOn,
-    /// (Optional) A callback for when this field changes.
+    /// (Optional) When responding to an update, choose which event
+    /// types will trigger a validation. By default any event will
+    /// trigger a validation on update. See [ValidateOn::AnyEvent].
+    ///
+    /// You may chose [ValidateOn::None] if you don't want any
+    /// validations to occur.
+    ///
+    /// You may choose to change this option if you want to recieve
+    /// updates via [InputFieldProps::onupdate] as the user types, but
+    /// you don't want validations to occur you don't want until the
+    /// field's `onchange` event callback fires.
+    #[prop_or(ValidateOn::AnyEvent)]
+    pub validate_on: ValidateOn,
+    /// (Optional) A callback for when the contents of this field
+    /// changes as a result of an update (determined by
+    /// [InputFieldProps::update_on]).
     #[prop_or_default]
-    pub onchange: Callback<Value>,
+    pub onupdate: Callback<Value>,
     /// (Optional) A placeholder string.
     #[prop_or_default]
     pub placeholder: String,
-    /// (Optional) Whether to validate when the field is updated.
-    #[prop_or(true)]
-    pub validate_on_update: bool,
     /// (Optional) Extra validation errors to display. These errors
     /// are not reported to the `Form`.
     #[prop_or_default]
@@ -249,17 +293,26 @@ where
 
     fn update(&mut self, msg: InputFieldMsg<Key, Type::Value>) -> ShouldRender {
         match msg {
-            InputFieldMsg::Update(value) => {
+            InputFieldMsg::Update(value, source) => {
                 let changed = value != self.value;
 
                 if changed {
                     self.value = value.clone();
-                    self.props.onchange.emit(value);
+                    self.props.onupdate.emit(value);
+                    
                     self.form_link
                         .send_form_message(FormMsg::FieldValueUpdate(self.props.field_key.clone()));
 
-                    if self.props.validate_on_update {
-                        self.update(InputFieldMsg::Validate);
+                    match self.props.validate_on {
+                        ValidateOn::ChangeEvent => {
+                            if let UpdateSource::ChangeEvent = source {
+                                self.update(InputFieldMsg::Validate);
+                            }
+                        }
+                        ValidateOn::AnyEvent => {
+                            self.update(InputFieldMsg::Validate);
+                        }
+                        ValidateOn::None => {}
                     }
                 }
 
@@ -333,13 +386,13 @@ where
 
         let input_oninput = match self.props.update_on {
             UpdateOn::ChangeEvent => Callback::default(),
-            UpdateOn::InputEvent => self.link.callback(move |data: InputData| {
-                InputFieldMsg::Update(Type::value_from_html_value(&data.value))
+            UpdateOn::InputAndChangeEvent => self.link.callback(move |data: InputData| {
+                InputFieldMsg::Update(Type::value_from_html_value(&data.value), UpdateSource::InputEvent)
             }),
         };
 
         let input_onchange = self.link.callback(move |data: ChangeData| match data {
-            ChangeData::Value(value) => InputFieldMsg::Update(Type::value_from_html_value(&value)),
+            ChangeData::Value(value) => InputFieldMsg::Update(Type::value_from_html_value(&value), UpdateSource::ChangeEvent),
             _ => panic!("invalid data type"),
         });
 

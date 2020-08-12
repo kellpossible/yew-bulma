@@ -96,7 +96,7 @@ where
     pub validator: AsyncValidator<CheckboxState, Key>,
     /// (Optional) A callback for when this field changes.
     #[prop_or_default]
-    pub onchange: Callback<CheckboxState>,
+    pub onupdate: Callback<CheckboxState>,
     /// (Optional) Whether to validate when the field is updated.
     #[prop_or(true)]
     pub validate_on_update: bool,
@@ -171,7 +171,7 @@ where
         match msg {
             CheckboxFieldMsg::Update => {
                 self.value = self.value.toggle();
-                self.props.onchange.emit(self.value);
+                self.props.onupdate.emit(self.value);
                 self.form_link
                     .send_form_message(FormMsg::FieldValueUpdate(self.props.field_key.clone()));
 
