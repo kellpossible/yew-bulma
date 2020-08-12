@@ -266,7 +266,7 @@ where
     Key: FieldKey,
 {
     fn validate_future(&self) -> Pin<Box<dyn Future<Output = Result<(), ValidationErrors<Key>>>>> {
-        let value = self.value.clone();
+        let value = self.value;
         let field_key = self.props.field_key.clone();
         let validator = self.props.validator.clone();
         Box::pin(async move { validator.validate_value(&value, &field_key).await })
