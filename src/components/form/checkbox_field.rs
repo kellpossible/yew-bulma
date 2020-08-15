@@ -251,6 +251,7 @@ where
                             type="checkbox"
                             onchange=onchange
                             checked=self.value.checked()
+                            class="mr-1"
                             />
                         { self.props.children.clone() }
                     </label>
