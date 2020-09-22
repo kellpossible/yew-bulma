@@ -144,8 +144,11 @@ where
     }
 }
 
+/// Where an update came from.
 pub enum UpdateSource {
+    /// The update came from an onchange event.
     ChangeEvent,
+    /// The update came from an oninput event.
     InputEvent,
 }
 
