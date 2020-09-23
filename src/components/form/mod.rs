@@ -8,6 +8,8 @@ mod form_component;
 pub mod input_field;
 mod link;
 pub mod select_field;
+pub mod radio_field;
+pub mod multi_value_field;
 
 pub use field_props::{FieldProps, NeqAssignFieldProps};
 pub use form_component::{Form, FormMsg, FormProps};

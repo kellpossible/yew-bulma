@@ -13,7 +13,7 @@ where
     /// Will be true while waiting all fields to perform their validations
     validating: bool,
     props: FormProps<Key>,
-    field_link: FormFieldLink<Key>,
+    form_link: FormFieldLink<Key>,
     link: ComponentLink<Self>,
 }
 
@@ -31,7 +31,7 @@ where
 
     pub fn all_validated(&self) -> bool {
         let mut all_validated = true;
-        let field_keys = self.props.field_link.registered_fields();
+        let field_keys = self.props.form_link.registered_fields();
 
         for key in &field_keys {
             all_validated &= self.validation_errors.contains_key(key)
@@ -58,7 +58,7 @@ where
     Key: FieldKey + 'static,
 {
     /// The link between this form and its fields.
-    pub field_link: FormFieldLink<Key>,
+    pub form_link: FormFieldLink<Key>,
     /// Fields, buttons and other elements within the form.
     pub children: Children,
     /// Triggered when the form has been requested to submit, returns
@@ -87,14 +87,14 @@ where
     type Properties = FormProps<Key>;
 
     fn create(props: FormProps<Key>, link: ComponentLink<Self>) -> Self {
-        let field_link = props.field_link.clone();
+        let field_link = props.form_link.clone();
         field_link.register_form(link.clone());
 
         Form {
             validation_errors: HashMap::new(),
             validating: false,
             props,
-            field_link,
+            form_link: field_link,
             link,
         }
     }
@@ -110,7 +110,7 @@ where
                 self.validating = true;
 
                 self.props
-                    .field_link
+                    .form_link
                     .send_all_fields_message(FieldMsg::Validate);
 
                 false
@@ -162,12 +162,12 @@ where
 
     fn change(&mut self, props: FormProps<Key>) -> ShouldRender {
         if self.props != props {
-            if self.field_link != props.field_link {
-                let field_link = props.field_link.clone();
+            if self.form_link != props.form_link {
+                let field_link = props.form_link.clone();
                 if !field_link.form_is_registered() {
                     field_link.register_form(self.link.clone())
                 }
-                self.field_link = field_link;
+                self.form_link = field_link;
             }
 
             self.props = props;
