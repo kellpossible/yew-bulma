@@ -82,13 +82,10 @@ where
     Type: InputType + 'static,
 {
     fn label(&self) -> Option<String> {
-        if self.props.show_label {
-            match &self.props.label {
-                Some(label) => Some(label.clone()),
-                None => Some(self.props.field_key.to_string()),
-            }
-        } else {
-            None
+        match &self.props.label {
+            Label::FieldKey => Some(self.props.field_key.to_string()),
+            Label::Text(text) => Some(text.clone()),
+            Label::None => None
         }
     }
 }
@@ -118,7 +115,7 @@ where
     Type: InputType + 'static,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "SelectFieldLink<{0:?}>", self.field_key())
+        write!(f, "InputFieldLink<{0:?}>", self.field_key())
     }
 }
 
@@ -192,6 +189,51 @@ pub enum ValidateOn {
     None,
 }
 
+#[derive(PartialEq, Clone, Debug)]
+pub enum LabelStyle {
+    Above,
+}
+
+/// How to produce the label text.
+#[derive(PartialEq, Clone, Debug)]
+pub enum Label {
+    /// Use `field_key`'s `Display` implementation for the label text.
+    FieldKey,
+    /// Use the supplied string for the label text.
+    Text(String),
+    /// Display no label.
+    None
+}
+
+impl Default for Label {
+    fn default() -> Self {
+        Self::FieldKey
+    }
+}
+
+impl Default for LabelStyle {
+    fn default() -> Self {
+        Self::Above
+    }
+}
+
+/// How to produce the placeholder text.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Placeholder {
+    /// Use `field_key`'s `Display` implementation for the placeholder text.
+    FieldKey,
+    /// Use the supplied string for the placeholder text.
+    Text(String),
+    /// Display no placeholder text.
+    None
+}
+
+impl Default for Placeholder {
+    fn default() -> Self {
+        Self::None
+    }
+}
+
 /// [Properties](yew::Component::Properties) for [InputField].
 #[derive(PartialEq, Clone, Properties, Debug)]
 pub struct InputFieldProps<Key, Value>
@@ -203,16 +245,14 @@ where
     pub field_key: Key,
     /// The link to the form that this field belongs to.
     pub form_link: FormFieldLink<Key>,
-    /// Whether to show the label. By default this is `true`. By
-    /// default the label text comes fom the `field_key`'s `Display`
-    /// implementation, however it can be overriden with the `label`
-    /// property.
-    #[prop_or(true)]
-    pub show_label: bool,
-    /// (Optional) Override the default label. Only displays if
-    /// `show_label` is `true` (which it is by default).
+    /// (Optional) Set the label text. By default this is
+    /// [Label::FieldKey].
     #[prop_or_default]
-    pub label: Option<String>,
+    pub label: Label,
+    /// How to display the label. By default this is
+    /// [LabelStyle::Above].
+    #[prop_or_default]
+    pub label_style: LabelStyle,
     /// (Optional) What validator to use for this field.
     #[prop_or_default]
     pub validator: AsyncValidator<Value, Key>,
@@ -243,9 +283,10 @@ where
     /// [InputFieldProps::update_on]).
     #[prop_or_default]
     pub onupdate: Callback<Value>,
-    /// (Optional) A placeholder string.
+    /// (Optional) Placeholder text. By default this is
+    /// [Placeholder::None].
     #[prop_or_default]
-    pub placeholder: String,
+    pub placeholder: Placeholder,
     /// (Optional) Extra validation errors to display. These errors
     /// are not reported to the `Form`.
     #[prop_or_default]
@@ -409,6 +450,12 @@ where
 
         let label = self.label();
 
+        let placeholder = match &self.props.placeholder {
+            Placeholder::FieldKey => self.props.field_key.to_string(),
+            Placeholder::Text(text) => text.clone(),
+            Placeholder::None => String::new(),
+        };
+
         html! {
             <div class="field">
                 {
@@ -429,7 +476,7 @@ where
                         class=classes
                         value=self.value
                         type=Type::input_type()
-                        placeholder=self.props.placeholder
+                        placeholder=placeholder
                         oninput=input_oninput
                         onchange=input_onchange/>
                 </div>
