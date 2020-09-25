@@ -245,6 +245,9 @@ where
     pub field_key: Key,
     /// The link to the form that this field belongs to.
     pub form_link: FormFieldLink<Key>,
+    /// Whether or not the input for this field is disabled.
+    #[prop_or(false)]
+    pub disabled: bool,
     /// (Optional) Set the label text. By default this is
     /// [Label::FieldKey].
     #[prop_or_default]
@@ -478,7 +481,8 @@ where
                         type=Type::input_type()
                         placeholder=placeholder
                         oninput=input_oninput
-                        onchange=input_onchange/>
+                        onchange=input_onchange
+                        disabled=self.props.disabled/>
                 </div>
                 { validation_error }
             </div>

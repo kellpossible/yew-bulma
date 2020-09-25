@@ -45,9 +45,12 @@ where
 pub enum FormMsg<Key> {
     FieldValueUpdate(Key),
     FieldValidationUpdate(Key, ValidationErrors<Key>),
+    /// Validate all the form fields, and submit (Triggering
+    /// `onsubmit` callback) when all fields have completed their
+    /// validations. 
     ValidateThenSubmit,
     Submit,
-    // An event that will be ignored (to use in callbacks)
+    /// An event that will be ignored (to use in callbacks)
     Ignore,
 }
 
