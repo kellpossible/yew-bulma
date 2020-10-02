@@ -298,6 +298,10 @@ where
     /// default this is `["input"]`.
     #[prop_or(vec!["input".to_string()])]
     pub input_classes: Vec<String>,
+    /// (Optional) Adds the `is-rounded` class to the input to make it
+    /// a rounded shape. By default this is `false`.
+    #[prop_or(false)]
+    pub is_rounded: bool,
 }
 
 impl<Key, Value> FieldProps<Key> for InputFieldProps<Key, Value>
@@ -427,6 +431,10 @@ where
 
     fn view(&self) -> Html {
         let mut classes = self.props.input_classes.clone();
+
+        if self.props.is_rounded {
+            classes.push("is-rounded".to_string())
+        }
 
         let validation_error =
             if let Some(errors) = self.display_validation_errors.get(&self.props.field_key) {
