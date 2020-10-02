@@ -294,6 +294,10 @@ where
     /// are not reported to the `Form`.
     #[prop_or_default]
     pub extra_errors: ValidationErrors<Key>,
+    /// (Optional) Classes to be applied to the `<input>` element. By
+    /// default this is `["input"]`.
+    #[prop_or(vec!["input".to_string()])]
+    pub input_classes: Vec<String>,
 }
 
 impl<Key, Value> FieldProps<Key> for InputFieldProps<Key, Value>
@@ -422,7 +426,7 @@ where
     }
 
     fn view(&self) -> Html {
-        let mut classes = vec!["input".to_string()];
+        let mut classes = self.props.input_classes.clone();
 
         let validation_error =
             if let Some(errors) = self.display_validation_errors.get(&self.props.field_key) {
