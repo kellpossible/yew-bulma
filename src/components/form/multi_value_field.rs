@@ -32,7 +32,10 @@ where
     pub link: ComponentLink<Self>,
 }
 
-pub trait MultiValueFieldProps<Value, Key>: Properties + FieldProps<Key> + PartialEq where Key: FieldKey {
+pub trait MultiValueFieldProps<Value, Key>: Properties + FieldProps<Key> + PartialEq
+where
+    Key: FieldKey,
+{
     /// The options available to select with this field.
     fn options<'a>(&'a self) -> Box<dyn Iterator<Item = &'a Value> + 'a>;
     /// Whether to show the label. By default this is `true`. By
@@ -56,7 +59,7 @@ where
     Value: Clone + PartialEq + Display + Debug + 'static,
     Key: FieldKey + 'static,
     Props: MultiValueFieldProps<Value, Key> + 'static,
-    Renderer: MultiValueFieldRenderer<Value, Key, Props>
+    Renderer: MultiValueFieldRenderer<Value, Key, Props>,
 {
     pub fn label(&self) -> Option<String> {
         if self.props.show_label() {
@@ -109,7 +112,8 @@ impl<Value, Key> Into<MultiValueFieldMsg<Value, Key>> for FieldMsg {
     }
 }
 
-impl<Value, Key, Props, Renderer> FieldLink<Key> for MultiValueFieldLink<Value, Key, Props, Renderer>
+impl<Value, Key, Props, Renderer> FieldLink<Key>
+    for MultiValueFieldLink<Value, Key, Props, Renderer>
 where
     Value: Clone + PartialEq + Display + Debug + 'static,
     Key: FieldKey + 'static,
@@ -125,10 +129,11 @@ where
 }
 
 pub trait MultiValueFieldRenderer<Value, Key, Props>
-where 
+where
     Value: Clone + PartialEq + ToString + Display + Debug,
     Key: FieldKey,
-    Props: MultiValueFieldProps<Value, Key> + 'static, {
+    Props: MultiValueFieldProps<Value, Key> + 'static,
+{
     fn render(field: &MultiValueField<Value, Key, Props, Self>) -> Html;
 }
 
@@ -225,7 +230,8 @@ where
     }
 }
 
-impl<Value, Key, Props, Renderer> AsyncValidatable<Key> for MultiValueField<Value, Key, Props, Renderer>
+impl<Value, Key, Props, Renderer> AsyncValidatable<Key>
+    for MultiValueField<Value, Key, Props, Renderer>
 where
     Key: FieldKey,
     Value: Clone + PartialEq + Display + Debug,

@@ -85,7 +85,7 @@ where
         match &self.props.label {
             Label::FieldKey => Some(self.props.field_key.to_string()),
             Label::Text(text) => Some(text.clone()),
-            Label::None => None
+            Label::None => None,
         }
     }
 }
@@ -202,7 +202,7 @@ pub enum Label {
     /// Use the supplied string for the label text.
     Text(String),
     /// Display no label.
-    None
+    None,
 }
 
 impl Default for Label {
@@ -225,7 +225,7 @@ pub enum Placeholder {
     /// Use the supplied string for the placeholder text.
     Text(String),
     /// Display no placeholder text.
-    None
+    None,
 }
 
 impl Default for Placeholder {
@@ -489,7 +489,7 @@ where
                 <div class="control">
                     <input
                         class=classes
-                        value=self.value
+                        value=self.value.to_string()
                         type=Type::input_type()
                         placeholder=placeholder
                         oninput=input_oninput

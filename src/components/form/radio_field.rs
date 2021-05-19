@@ -1,23 +1,29 @@
-use super::{FieldProps, multi_value_field::MultiValueField, multi_value_field::MultiValueFieldMsg, multi_value_field::MultiValueFieldProps, multi_value_field::MultiValueFieldRenderer};
-
-use crate::components::form::{
-    FieldKey, FormFieldLink,
+use super::{
+    multi_value_field::MultiValueField, multi_value_field::MultiValueFieldMsg,
+    multi_value_field::MultiValueFieldProps, multi_value_field::MultiValueFieldRenderer,
+    FieldProps,
 };
 
-use form_validation::{AsyncValidator, ValidationErrors};
-use yew::{Callback, ChangeData, Html, Properties, html};
+use crate::components::form::{FieldKey, FormFieldLink};
 
-use std::{fmt::{Debug, Display}, marker::PhantomData};
+use form_validation::{AsyncValidator, ValidationErrors};
+use yew::{html, Callback, ChangeData, Html, Properties};
+
+use std::{
+    fmt::{Debug, Display},
+    marker::PhantomData,
+};
 
 /// This is a rather heavy generic component, for large projects
 /// consider using String/&str for both the value and the key in forms
 /// that use this component for improved compile times.
-pub type RadioField<Value, Key> = MultiValueField<Value, Key, RadioFieldProps<Value, Key>, RadioFieldRenderer<Value, Key>>;
+pub type RadioField<Value, Key> =
+    MultiValueField<Value, Key, RadioFieldProps<Value, Key>, RadioFieldRenderer<Value, Key>>;
 
 #[derive(PartialEq, Debug, Clone, Copy)]
 pub enum Layout {
     /// Uses the following layout:
-    /// 
+    ///
     /// ```html
     /// <div>
     ///     <input/>
@@ -26,7 +32,7 @@ pub enum Layout {
     /// ```
     SideBySideInDiv,
     /// Uses the following layout:
-    /// 
+    ///
     /// ```html
     /// <label><input/></label>
     /// ```
@@ -116,10 +122,11 @@ where
     }
 }
 
-impl<Value, Key> MultiValueFieldProps<Value, Key> for RadioFieldProps<Value, Key> 
-where 
+impl<Value, Key> MultiValueFieldProps<Value, Key> for RadioFieldProps<Value, Key>
+where
     Key: FieldKey + PartialEq + 'static,
-    Value: Clone + PartialEq,{
+    Value: Clone + PartialEq,
+{
     fn options<'a>(&'a self) -> Box<dyn Iterator<Item = &'a Value> + 'a> {
         Box::new(self.options.iter())
     }
@@ -147,42 +154,40 @@ where
 
 pub struct RadioFieldRenderer<Value, Key> {
     value_type: PhantomData<Value>,
-    key_type: PhantomData<Key>
+    key_type: PhantomData<Key>,
 }
 
-impl<Value, Key> RadioFieldRenderer<Value, Key> 
+impl<Value, Key> RadioFieldRenderer<Value, Key>
 where
     Value: Clone + PartialEq + Display + Debug + 'static,
-    Key: FieldKey +  PartialEq + 'static {
-
+    Key: FieldKey + PartialEq + 'static,
+{
     /// Create an `input` onchange handler for a specific `Value`.
     fn onchange_value(value: Value) -> impl Fn(ChangeData) -> MultiValueFieldMsg<Value, Key> {
         move |change_data: ChangeData| match change_data {
             ChangeData::Value(change_value) => match change_value.as_str() {
-                "on" => {
-                    MultiValueFieldMsg::Update(value.clone())
-                },
+                "on" => MultiValueFieldMsg::Update(value.clone()),
                 _ => {
-                    panic!(
-                        "Unexpected onchange value: {}.",
-                        change_value,
-                    );
+                    panic!("Unexpected onchange value: {}.", change_value,);
                 }
             },
             _ => {
-                panic!(
-                    "Invalid onchange data type: {:?}.",
-                    change_data,
-                );
+                panic!("Invalid onchange data type: {:?}.", change_data,);
             }
         }
     }
 
     fn input(
-        field: &MultiValueField<Value, Key, RadioFieldProps<Value, Key>, Self>, 
-        value: Value) -> Html {
+        field: &MultiValueField<Value, Key, RadioFieldProps<Value, Key>, Self>,
+        value: Value,
+    ) -> Html {
         let selected = field.value.as_ref() == Some(&value);
-        let disabled = field.props.disabled_options.iter().find(|v| v == &&value).is_some();
+        let disabled = field
+            .props
+            .disabled_options
+            .iter()
+            .find(|v| v == &&value)
+            .is_some();
         let label = value.to_string();
 
         let onchange = field.link.callback(Self::onchange_value(value));
@@ -191,21 +196,21 @@ where
         match field.props.layout {
             Layout::SideBySideInDiv => {
                 let id = uuid::Uuid::new_v4();
-                
+
                 // This structure is used because it is more flexible for
                 // custom css layouts than `<label><input/></label>`.
                 html! {
                     <div class=field.props.input_div_classes.clone()>
                         <input
                             onchange=onchange
-                            id=id
+                            id=id.to_string()
                             class=field.props.input_classes.clone()
                             type="radio"
                             name=field_name
                             checked=selected
                             disabled=disabled/>
                         <label
-                            for=id
+                            for=id.to_string()
                             class=field.props.input_label_classes.clone()
                             disabled=disabled>
                             { label }
@@ -215,13 +220,13 @@ where
             }
             Layout::InputInLabel => {
                 html! {
-                    <label 
+                    <label
                         class=field.props.input_label_classes.clone()
                         disabled=disabled>
-                        <input 
+                        <input
                             onchange=onchange
                             class=field.props.input_classes.clone()
-                            type="radio" 
+                            type="radio"
                             name=field_name
                             checked=selected
                             disabled=disabled/>
@@ -230,15 +235,15 @@ where
                 }
             }
         }
-
-        
     }
 }
 
-impl<Value, Key> MultiValueFieldRenderer<Value, Key, RadioFieldProps<Value, Key>> for RadioFieldRenderer<Value, Key> 
-    where
-        Value: Clone + PartialEq + Display + Debug + 'static,
-        Key: FieldKey +  PartialEq + 'static, {
+impl<Value, Key> MultiValueFieldRenderer<Value, Key, RadioFieldProps<Value, Key>>
+    for RadioFieldRenderer<Value, Key>
+where
+    Value: Clone + PartialEq + Display + Debug + 'static,
+    Key: FieldKey + PartialEq + 'static,
+{
     fn render(field: &MultiValueField<Value, Key, RadioFieldProps<Value, Key>, Self>) -> Html {
         let mut classes = vec![];
 
@@ -253,9 +258,12 @@ impl<Value, Key> MultiValueFieldRenderer<Value, Key, RadioFieldProps<Value, Key>
 
         let label = field.label();
 
-        let inputs: Html = field.props.options.iter().map(|value| {
-            Self::input(field,value.clone())
-        }).collect();
+        let inputs: Html = field
+            .props
+            .options
+            .iter()
+            .map(|value| Self::input(field, value.clone()))
+            .collect();
 
         html! {
             <div class="field">

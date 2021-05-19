@@ -47,7 +47,7 @@ pub enum FormMsg<Key> {
     FieldValidationUpdate(Key, ValidationErrors<Key>),
     /// Validate all the form fields, and submit (Triggering
     /// `onsubmit` callback) when all fields have completed their
-    /// validations. 
+    /// validations.
     ValidateThenSubmit,
     Submit,
     /// An event that will be ignored (to use in callbacks)

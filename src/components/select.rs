@@ -8,9 +8,12 @@
 
 use crate::{classes::Size, components::icon};
 use web_sys::HtmlSelectElement;
-use yew::callback::Callback;
-use yew::html::{ChangeData, Component, ComponentLink, Html, NodeRef, ShouldRender};
-use yew::macros::{html, Properties};
+use yew::{
+    callback::Callback,
+    html::{ChangeData, Component, ComponentLink, Html, NodeRef, ShouldRender},
+    macros::html,
+    Properties,
+};
 
 /// `Select` component.
 #[derive(Debug)]

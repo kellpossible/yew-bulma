@@ -1,17 +1,18 @@
-use crate::components::form::{
-    FieldKey, FormFieldLink,
-};
+use crate::components::form::{FieldKey, FormFieldLink};
 use crate::components::select::Select;
 
 use form_validation::{AsyncValidator, ValidationErrors};
 use yew::{html, Callback, Html, Properties};
 
-use super::{FieldProps, multi_value_field::MultiValueField, multi_value_field::MultiValueFieldMsg, multi_value_field::MultiValueFieldProps, multi_value_field::MultiValueFieldRenderer};
-use std::{
-    fmt::{Debug, Display},
+use super::{
+    multi_value_field::MultiValueField, multi_value_field::MultiValueFieldMsg,
+    multi_value_field::MultiValueFieldProps, multi_value_field::MultiValueFieldRenderer,
+    FieldProps,
 };
+use std::fmt::{Debug, Display};
 
-pub type SelectField<Value, Key> = MultiValueField<Value, Key, SelectFieldProps<Value, Key>, SelectFieldRenderer>;
+pub type SelectField<Value, Key> =
+    MultiValueField<Value, Key, SelectFieldProps<Value, Key>, SelectFieldRenderer>;
 
 /// [Properties](yew::Component::Properties) for [SelectField].
 #[derive(PartialEq, Clone, Properties, Debug)]
@@ -70,11 +71,12 @@ where
     }
 }
 
-impl<Value, Key> MultiValueFieldProps<Value, Key> for SelectFieldProps<Value, Key> 
-where 
+impl<Value, Key> MultiValueFieldProps<Value, Key> for SelectFieldProps<Value, Key>
+where
     Key: FieldKey + PartialEq + 'static,
-    Value: Clone + PartialEq,{
-        fn options<'a>(&'a self) -> Box<dyn Iterator<Item = &'a Value> + 'a> {
+    Value: Clone + PartialEq,
+{
+    fn options<'a>(&'a self) -> Box<dyn Iterator<Item = &'a Value> + 'a> {
         Box::new(self.options.iter())
     }
 
@@ -99,14 +101,14 @@ where
     }
 }
 
-
 pub struct SelectFieldRenderer;
 
-
-impl<Value, Key> MultiValueFieldRenderer<Value, Key, SelectFieldProps<Value, Key>> for SelectFieldRenderer 
-    where
-        Value: Clone + PartialEq + Display + Debug + 'static,
-        Key: FieldKey + PartialEq + 'static, {
+impl<Value, Key> MultiValueFieldRenderer<Value, Key, SelectFieldProps<Value, Key>>
+    for SelectFieldRenderer
+where
+    Value: Clone + PartialEq + Display + Debug + 'static,
+    Key: FieldKey + PartialEq + 'static,
+{
     fn render(field: &MultiValueField<Value, Key, SelectFieldProps<Value, Key>, Self>) -> Html {
         let mut classes = vec![];
 
